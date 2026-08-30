@@ -1,0 +1,8 @@
+# jamais dans le depot : tout ce qui est personnel
+sessions.json
+*.log
+*.json.bak
+__pycache__/
+.venv-cdp/
+.omc/
+.DS_Store
