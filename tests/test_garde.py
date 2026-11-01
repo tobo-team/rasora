@@ -59,6 +59,13 @@ class Garde(unittest.TestCase):
         self.assertEqual(d(M + "browser_js", {"tab": "a", "code": "new Image().src='http://x/'+1"}), "ask")
         self.assertEqual(d(M + "browser_js", {"tab": "a", "code": "document.title"}), "allow")
 
+    def test_bypass_laisse_la_fenetre_de_connexion(self):
+        e = {"tool_name": "Bash", "tool_input": {"command": "rasora login https://x.com/login"},
+             "permission_mode": "bypassPermissions"}
+        r = subprocess.run([sys.executable, os.path.join(RACINE, "scripts", "garde.py")],
+                           input=json.dumps(e), capture_output=True, text=True)
+        self.assertEqual(r.stdout, "")
+
     def test_entree_cassee_ne_bloque_rien(self):
         r = subprocess.run([sys.executable, os.path.join(RACINE, "scripts", "garde.py")],
                            input="pas du json", capture_output=True, text=True)

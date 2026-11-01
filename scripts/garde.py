@@ -97,6 +97,12 @@ def bash(cmd):
     return None
 
 
+def est_connexion(e):
+    i = e.get("tool_input") or {}
+    return (e.get("tool_name", "").endswith("__session_login")
+            or re.search(r"(^|[\s/])rasora\s+login\s", i.get("command", "")) is not None)
+
+
 def main():
     try:
         e = json.load(sys.stdin)
@@ -109,6 +115,9 @@ def main():
     # With permission checks switched off, "ask" may never reach a human: refuse instead,
     # and let Claude ask in the conversation.
     if decision == "ask" and e.get("permission_mode") == "bypassPermissions":
+        # A sign-in window only shows a page to the user: it can't act on their behalf.
+        if est_connexion(e):
+            return
         decision, raison = "deny", raison + " Ask the user in the conversation first."
     print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse",
                                              "permissionDecision": decision,
