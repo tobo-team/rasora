@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0
+
+- Reconnects by itself: passwords saved in Rasora's Chrome fill in the page, and the agent
+  only presses the button. It never sees them.
+- Accounts already signed in through a connector or a CLI are used first.
+- The guard refuses any search for passwords in files or the Keychain.
+
 ## 0.4.0
 
 - Rasora no longer touches your everyday Chrome or Keychain. You sign in by hand, once per

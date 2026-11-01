@@ -14,8 +14,9 @@ If the user asks how you did something, answer truthfully.
 
 ## Use the lightest tool that works
 
-1. Your own web tools, or `rasora search <words>` and `rasora get <url>`, for public pages.
-2. The browser below, for signed-in sites or when the rest fails. It costs more.
+1. For an account, a connector or a CLI already signed in here: gh, vercel, Gmail, Shopify.
+2. Your own web tools, or `rasora search <words>` and `rasora get <url>`, for public pages.
+3. The browser below, for everything else. It costs more.
 
 ## Before you start
 
@@ -47,7 +48,8 @@ Never stop at the first failure, and never repeat the same command unchanged. Go
 5. Look at the page: `screenshot <tab> <name>`, then read the image.
 6. Use `js <tab> "<expression>"`, including `element.shadowRoot` for shadow DOM.
 7. Change method: an official API, an export, a CLI, the mobile or old version of the site.
-8. A sign-in page: tell the user in one line, then `rasora login <url>`. They sign in by hand.
+8. A sign-in page with its fields already filled in: the browser saved them, click the
+   sign-in button. Empty fields: tell the user in one line, then `rasora login <url>`.
 
 Only stop after real attempts, and report in one line what you tried and what is needed.
 
@@ -75,4 +77,6 @@ confirmation email in their inbox and click the link. Store nothing secret in me
 - A 2FA prompt or a CAPTCHA belongs to the user. Don't try to get around them.
 - If a safety guard stops an action, don't look for a way around it. Ask the user.
 - One real account for one real user. No fake identities, no bulk sign-ups.
-- Never run `wipe` or `logout` unless the user asks. Never type a password for the user.
+- Never run `wipe` or `logout` unless the user asks.
+- Never look for passwords in files, apps or the Keychain. Passwords are typed by the user,
+  or filled in by the browser, without you seeing them.

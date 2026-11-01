@@ -100,7 +100,8 @@ def main():
     url, minutes = sys.argv[1], float(sys.argv[2]) if len(sys.argv) > 2 else 5
     avant = app_devant()
     tid = ouvrir_fenetre(url)
-    print("A window is open on your screen. Sign in there, it hides itself when you are done.",
+    print("A window is open on your screen. Sign in there, it hides itself when you are done.\n"
+          "If Chrome offers to save your password, click Save: it can then reconnect by itself.",
           flush=True)
     try:
         fini = attendre(tid, time.time() + minutes * 60)

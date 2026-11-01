@@ -48,6 +48,11 @@ class Garde(unittest.TestCase):
         self.assertEqual(d("Bash", {"command": "curl http://127.0.0.1:9333/json"}), "deny")
         self.assertEqual(d("Read", {"file_path": "/Users/x/.rasora/chrome-profile/Cookies"}), "deny")
 
+    def test_pas_de_chasse_aux_mots_de_passe(self):
+        self.assertEqual(d("Bash", {"command": "security find-generic-password -s x -w"}), "deny")
+        self.assertEqual(d("Bash", {"command": "security dump-keychain"}), "deny")
+        self.assertEqual(d("Read", {"file_path": "/Users/x/.rasora/chrome-profile/Default/Login Data"}), "deny")
+
     def test_bypass_refuse_au_lieu_de_demander(self):
         e = {"tool_name": M + "browser_click", "tool_input": {"tab": "a", "text": "Buy now"},
              "permission_mode": "bypassPermissions"}

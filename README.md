@@ -31,7 +31,7 @@ one of your accounts, a small window opens: you sign in once, by hand, and it hi
 | | |
 |---|---|
 | **Works on the web** | Search and reading first, a hidden Chrome only when a site needs it. Your screen and tabs stay yours. |
-| **Stays signed in** | You sign in once per site in its own Chrome, and it stays there for as long as the site allows. |
+| **Stays signed in** | You sign in once per site. Click Save in Chrome, and it reconnects by itself when a session ends. |
 | **Remembers** | Your preferences, your projects, what worked on each site, in Markdown files you can read. |
 | **Finds another way** | Visible text, iframes, keyboard, direct links, screenshots, then a different method altogether. |
 | **Costs less** | Text rather than screenshots, Chrome last. No extra model. |

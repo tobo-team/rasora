@@ -364,7 +364,8 @@ def soigner(url):
     if not page_de_connexion(url):
         return None
     nom = site_connu(url) or url
-    print(f"SESSION {nom} SIGNED OUT. Ask the user, then run: rasora login {url[:80]}")
+    print(f"SESSION {nom} SIGNED OUT. If the fields are already filled in, click the sign-in "
+          f"button. Otherwise ask the user, then run: rasora login {url[:80]}")
     return None
 
 

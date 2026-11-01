@@ -14,6 +14,9 @@ not a public issue.
   or your Keychain. It has its own Chrome profile.
 - **You sign in yourself.** `rasora login` shows a window and you type your own password and
   codes. The agent never sees them. Signing in to a site is how you allow it.
+- **Saved passwords stay in Chrome.** If you click Save, Rasora's own Chrome keeps the password
+  and fills in the page. The agent only presses the button. It is forbidden from looking for
+  passwords in files, apps or the Keychain.
 - **A guard outside the model** (`scripts/garde.py`). It is a Claude Code hook, so text on a
   page can't talk it out of acting. It asks you before clicks that pay, order, publish, send
   or delete, before filling card or password fields, and before opening a sign-in window.

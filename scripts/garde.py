@@ -24,7 +24,8 @@ RISQUE = re.compile(
 CHAMP = re.compile(r"card|carte|cvv|cvc|iban|password|mot de passe|ssn|routing", re.I)
 VOLE = re.compile(r"document\.cookie|localStorage|sessionStorage|indexedDB|cookieStore", re.I)
 SECRETS = re.compile(r"\.rasora/(chrome-profile|bin/sessions\.json)|Chrome Safe Storage|"
-                     r"Google/Chrome/[^ ]*Cookies")
+                     r"Google/Chrome/[^ ]*(Cookies|Login Data)|Login Data|"
+                     r"find-(generic|internet)-password|dump-keychain")
 BACKDOOR = re.compile(r"127\.0\.0\.1:9\d{3}|localhost:9\d{3}")
 REGLAGES = ("login", "logout", "wipe", "do", "resume")
 SORTIE = re.compile(r"\.submit\(|fetch\(|XMLHttpRequest|sendBeacon|new Image|\.src\s*=|"
