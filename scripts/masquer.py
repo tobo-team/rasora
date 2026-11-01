@@ -31,7 +31,7 @@ import sys
 
 # Chemins relatifs a la maison de celui qui installe : rien en dur.
 MARQUES = tuple("user-data-dir=" + os.path.expanduser(d)
-                for d in ("~/.bot-navigateur", "~/.chrome-perso"))
+                for d in ("~/.neverlogout/chrome-profile", "~/.neverlogout/chrome-profile"))
 
 
 def pids():

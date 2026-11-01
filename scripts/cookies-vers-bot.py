@@ -11,7 +11,10 @@ Rien ne sort de la machine : on lit le fichier Cookies du profil (SQLite,
 chiffre AES-128-CBC avec une cle du Trousseau), on dechiffre, on pose les
 cookies dans le bot par CDP. Le bot n'a pas besoin d'etre redemarre.
 
-  cookies-vers-bot.py "Profile 2" [domaine ...]     defaut : les domaines Google
+  cookies-vers-bot.py "Profile 2" domain [domain ...]
+
+Only the domains named here are read. There is no default on purpose: nothing is
+copied unless the user allowed that site (see `neverlogout allow`).
 """
 import hashlib
 import json
@@ -27,8 +30,6 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 PORT = int(os.environ.get("CDP_PORT", "9333"))
 CHROME = os.path.expanduser("~/Library/Application Support/Google/Chrome")
-DOMAINES = [".google.com", "accounts.google.com", "drive.google.com",
-            "docs.google.com", ".googleusercontent.com", ".youtube.com"]
 
 
 def cle():
@@ -38,12 +39,14 @@ def cle():
     return hashlib.pbkdf2_hmac("sha1", mdp, b"saltysalt", 1003, 16)
 
 
-def dechiffrer(blob, k):
+def dechiffrer(blob, cle_de):
+    """`cle_de` is called only for an encrypted value, so Keychain stays untouched
+    when there is nothing to decrypt."""
     if not blob:
         return ""
     if blob[:3] not in (b"v10", b"v11"):
         return blob.decode("utf-8", "replace")
-    d = Cipher(algorithms.AES(k), modes.CBC(b" " * 16)).decryptor()
+    d = Cipher(algorithms.AES(cle_de()), modes.CBC(b" " * 16)).decryptor()
     clair = d.update(blob[3:]) + d.finalize()
     clair = clair[: -clair[-1]] if clair and clair[-1] <= 16 else clair
     # Chrome recent prefixe la valeur par le SHA256 du domaine, 32 octets
@@ -56,14 +59,20 @@ def dechiffrer(blob, k):
 def lire(profil, domaines):
     src = os.path.join(CHROME, profil, "Cookies")
     if not os.path.exists(src):
-        sys.exit(f"pas de fichier Cookies dans {profil}")
+        sys.exit(f"no Cookies file in {profil}")
     tmp = tempfile.mkdtemp()
     copie = os.path.join(tmp, "Cookies")
     shutil.copy2(src, copie)
     for suffixe in ("-wal", "-shm"):
         if os.path.exists(src + suffixe):
             shutil.copy2(src + suffixe, copie + suffixe)
-    k = cle()
+    memo = []
+
+    def k():
+        if not memo:
+            memo.append(cle())
+        return memo[0]
+
     con = sqlite3.connect(f"file:{copie}?mode=ro", uri=True)
     ou = " OR ".join("host_key = ? OR host_key = ?" for _ in domaines)
     params = []
@@ -123,18 +132,16 @@ def poser(cookies):
 
 
 def main():
-    profil = sys.argv[1] if len(sys.argv) > 1 else "Profile 2"
-    domaines = sys.argv[2:] or DOMAINES
+    if len(sys.argv) < 3:
+        sys.exit(__doc__)
+    profil, domaines = sys.argv[1], sys.argv[2:]
     cookies = lire(profil, domaines)
     if not cookies:
-        sys.exit("aucun cookie lu, mauvais profil ?")
+        sys.exit("no cookie read, wrong profile?")
     poses, refuses = poser(cookies)
-    noms = {c["name"] for c in cookies}
-    print(f"{poses}/{len(cookies)} cookies greffes depuis {profil}")
+    print(f"{poses}/{len(cookies)} cookies copied from {profil}")
     for nom, pourquoi in refuses:
-        print(f"  refuse : {nom} ({pourquoi})")
-    for essentiel in ("SID", "SAPISID", "__Secure-1PSID", "HSID"):
-        print(f"  {essentiel}: {'present' if essentiel in noms else 'ABSENT'}")
+        print(f"  refused: {nom} ({pourquoi})")
 
 
 if __name__ == "__main__":

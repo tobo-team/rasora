@@ -10,10 +10,10 @@
 #   1. Ne touche JAMAIS au Chrome personnel. Aucun pkill global, aucun
 #      osascript quit. Il ne connait que les processus dont la ligne de
 #      commande contient SON user-data-dir.
-#   2. Profil a lui : ~/.bot-navigateur. Jamais un lien vers ses profils.
+#   2. Profil a lui : ~/.neverlogout/chrome-profile. Jamais un lien vers ses profils.
 #   3. Port 9333, pas 9222, pour ne rien croiser.
 #   4. Pas de --enable-automation : navigator.webdriver reste false, donc
-#      Cloudflare (gmgn, axiom) ne voit pas d'automatisation. C'est ce qui
+#      Cloudflare ne voit pas d'automatisation. C'est ce qui
 #      distingue ce montage du Chromium de gstack, bloque par construction.
 #
 # Usage :
@@ -23,8 +23,8 @@
 #   navigateur-bot.sh --arret        arrete UNIQUEMENT ce navigateur
 
 set -uo pipefail
-PORT=9333
-DOSSIER="$HOME/.bot-navigateur"
+PORT="${CDP_PORT:-9333}"
+DOSSIER="$HOME/.neverlogout/chrome-profile"
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 MARQUE="user-data-dir=$DOSSIER"
 
@@ -35,17 +35,17 @@ case "${1:-}" in
   --etat)
     if vivant; then
       v=$(curl -s "http://127.0.0.1:$PORT/json/version" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("Browser",""))' 2>/dev/null)
-      echo "pret sur $PORT  ($v)"; exit 0
+      echo "ready on $PORT  ($v)"; exit 0
     fi
-    echo "eteint"; exit 1 ;;
+    echo "off"; exit 1 ;;
   --arret)
     # on ne tue que nos propres processus, jamais "Google Chrome" en general
     pids=$(mes_pids)
-    if [ -n "$pids" ]; then echo "$pids" | xargs kill 2>/dev/null; echo "navigateur bot arrete"; fi
+    if [ -n "$pids" ]; then echo "$pids" | xargs kill 2>/dev/null; echo "browser stopped"; fi
     exit 0 ;;
 esac
 
-[ -x "$CHROME" ] || { echo "Chrome introuvable" >&2; exit 1; }
+[ -x "$CHROME" ] || { echo "Chrome not found" >&2; exit 1; }
 
 if ! vivant; then
   # nettoyage d'un reliquat a nous qui ne repondrait plus
@@ -62,24 +62,25 @@ if ! vivant; then
     --disable-renderer-backgrounding \
     --disable-background-timer-throttling \
     --window-size=1200,900 --window-position=-2400,0 \
+    ${NEVERLOGOUT_CHROME_ARGS:-} \
     "about:blank" >/dev/null 2>&1 &
   disown
 
   for _ in $(seq 1 30); do vivant && break; sleep 1; done
-  vivant || { echo "le navigateur bot n'a pas repondu apres 30 s" >&2; exit 1; }
+  vivant || { echo "browser did not answer after 30 s" >&2; exit 1; }
 
   # Il travaille MASQUE. Il ne doit jamais surgir par-dessus l'ecran de l'utilisateur :
   # la position hors ecran evite le surgissement au demarrage, la minimisation
   # finit le travail. Clics, lecture et captures continuent de fonctionner
   # fenetre minimisee (verifie le 16/08/2026). `nav.py montrer` la ramene quand
   # un login demande ses mains. `--visible` saute cette etape.
-  if [ "${1:-}" != "--visible" ]; then
+  if [ "${1:-}" != "--visible" ] && [ "${NEVERLOGOUT_NO_HIDE:-0}" != "1" ]; then
     # `discret` masque l'application ET repousse ses fenetres. Le masquage est ce
     # qui compte : macOS ne donne pas le premier plan a une app masquee.
-    "$HOME/.claude/scripts/.venv-cdp/bin/python" "$HOME/.claude/scripts/nav.py" discret >/dev/null 2>&1
-    "$HOME/.claude/scripts/masquer.py" >/dev/null 2>&1
+    "$HOME/.neverlogout/bin/.venv-cdp/bin/python" "$HOME/.neverlogout/bin/nav.py" discret >/dev/null 2>&1
+    "$HOME/.neverlogout/bin/masquer.py" >/dev/null 2>&1
   fi
-  echo "navigateur bot demarre sur $PORT (masque)"
+  echo "browser started on $PORT (hidden)"
 fi
 
 # `--visible` n'est pas une url a ouvrir
@@ -89,7 +90,7 @@ fi
 # cible EN ARRIERE-PLAN : l'appel HTTP /json/new, lui, restaure et ramene la fenetre
 # devant l'ecran de l'utilisateur a chaque ouverture.
 if [ -n "${1:-}" ]; then
-  "$HOME/.claude/scripts/.venv-cdp/bin/python" "$HOME/.claude/scripts/nav.py" ouvrir "$1" 20 \
+  "$HOME/.neverlogout/bin/.venv-cdp/bin/python" "$HOME/.neverlogout/bin/nav.py" ouvrir "$1" 20 \
     || curl -s --max-time 10 -X PUT "http://127.0.0.1:$PORT/json/new?$1" >/dev/null 2>&1
 fi
 
@@ -103,12 +104,12 @@ fi
 # sans espace finale, et exclure "Helper".
 perso=0
 while read -r p rest; do
-  echo "$rest" | grep -q "bot-navigateur" || perso=$((perso+1))
+  echo "$rest" | grep -q "neverlogout/chrome-profile" || perso=$((perso+1))
 done < <(ps -Ao pid,args | grep "Contents/MacOS/Google Chrome" | grep -v Helper | grep -v grep)
 
 if [ "$perso" -gt 0 ]; then
-  echo "verifie : le Chrome personnel tourne toujours ($perso instance)"
+  echo "checked: your own Chrome is still running ($perso instance)"
 else
-  echo "note : aucun Chrome personnel ouvert en ce moment (ce script ne l'a pas ferme)"
+  echo "note: your own Chrome is not open right now (this script did not close it)"
 fi
 exit 0

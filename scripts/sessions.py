@@ -14,10 +14,9 @@ relancer quoi que ce soit et sans qu'un mot de passe circule.
   sessions.py reparer [nom ...]   regreffe ce qui est mort, puis reteste
   sessions.py assurer <nom>       reparer une seule session, silencieux si OK
   sessions.py elaguer             teste tout, RETIRE de la table ce qui ne vit pas
-  sessions.py sauver              copie de securite des cookies du bot
   sessions.py profils             quel profil Chrome porte quel compte
 
-Appele toutes les 20 minutes par launchd `com.bevu.sessions`. Aucun modele
+Appele toutes les 20 minutes par launchd `com.neverlogout.sessions`. Aucun modele
 n'est invoque : le cout est nul.
 """
 import json
@@ -34,7 +33,7 @@ ICI = os.path.dirname(os.path.abspath(__file__))
 TABLE = os.path.join(ICI, "sessions.json")
 GREFFE = os.path.join(ICI, "cookies-vers-bot.py")
 PY = os.path.join(ICI, ".venv-cdp", "bin", "python")
-SAUVEGARDES = os.path.expanduser("~/.claude/sessions")
+SAUVEGARDES = os.path.expanduser("~/.neverlogout/sessions")
 JOURNAL = os.path.join(SAUVEGARDES, "sessions.log")
 CHROME = os.path.expanduser("~/Library/Application Support/Google/Chrome")
 
@@ -49,8 +48,7 @@ def note(msg):
 
 def table():
     if not os.path.exists(TABLE):
-        sys.exit("sessions.json manquant. Lance : "
-                 "~/.claude/scripts/configurer-sessions.py")
+        sys.exit("no site allowed yet. Run: neverlogout allow <site>")
     return json.load(open(TABLE, encoding="utf-8"))
 
 
@@ -112,7 +110,7 @@ class Onglet:
             if not cible:
                 time.sleep(0.05)
         if not cible:
-            raise RuntimeError("l'onglet de sonde ne s'est pas ouvert")
+            raise RuntimeError("probe tab did not open")
         self.ws = websocket.create_connection(cible["webSocketDebuggerUrl"], timeout=60)
         self.n = 0
         self.premier_plan()
@@ -152,7 +150,7 @@ class Onglet:
                 self._rebrancher()
                 self.cmd("Page.navigate", {"url": url})
             except Exception:
-                return ""          # sonde impossible : traitee comme une session morte
+                return ""          # probe failed : traitee comme une session morte
         self.premier_plan()
         fin = time.time() + secondes
         dernier = ""
@@ -247,13 +245,13 @@ def tester(onglet, nom, conf):
     txt = onglet.texte(conf["sonde"])
     derniere = txt.strip().split("\n")[-1] if txt.strip() else ""
     if CONNEXION.search(derniere):
-        return False, "page de connexion"
+        return False, "login page"
     if conf.get("signe") and conf["signe"].lower() in txt.lower():
         return True, ""
     hote = urllib.parse.urlparse(conf["sonde"]).netloc.split(".")[-2:]
     if derniere and ".".join(hote) in derniere:
-        return True, "sans le signe, mais pas de redirection vers la connexion"
-    return False, "ni signe ni page connue"
+        return True, "presumed: no redirect to login"
+    return False, "no proof of login"
 
 
 def greffer(profil, conf):
@@ -304,7 +302,8 @@ def profils_candidats(domaines, limite=4):
     return [prof for _, prof in scores[:limite]]
 
 
-def sauver():
+def oublier(domaines):
+    """Delete from the bot every cookie of these domains. Rend le nombre efface."""
     import websocket
     ws_url = json.load(urllib.request.urlopen(
         f"http://127.0.0.1:{PORT}/json/version", timeout=10))["webSocketDebuggerUrl"]
@@ -315,17 +314,22 @@ def sauver():
         if r.get("id") == 1:
             break
     ws.close()
-    cookies = r["result"]["cookies"]
-    os.makedirs(SAUVEGARDES, exist_ok=True)
-    chemin = os.path.join(SAUVEGARDES,
-                          "bot-cookies-" + time.strftime("%Y%m%d-%H%M") + ".json")
-    json.dump(cookies, open(chemin, "w"))
-    # on ne garde que les dix dernieres
-    vieux = sorted(f for f in os.listdir(SAUVEGARDES)
-                   if f.startswith("bot-cookies-2"))
-    for f in vieux[:-10]:
-        os.remove(os.path.join(SAUVEGARDES, f))
-    return len(cookies), chemin
+    racines = {d.lstrip(".") for d in domaines}
+
+    def vise(hote):
+        hote = hote.lstrip(".")
+        return any(hote == x or hote.endswith("." + x) for x in racines)
+
+    cibles = [c for c in r["result"]["cookies"] if vise(c["domain"])]
+    if cibles:
+        onglet = Onglet()
+        try:
+            for c in cibles:
+                onglet.cmd("Network.deleteCookies", {"name": c["name"], "domain": c["domain"],
+                                                     "path": c.get("path", "/")})
+        finally:
+            onglet.fermer()
+    return len(cibles)
 
 
 def profils():
@@ -343,18 +347,13 @@ def main():
         return profils()
 
     if not bot_vivant():
-        note("BOT ETEINT : ~/.claude/scripts/navigateur-bot.sh pour le relancer")
+        note("browser is off. Run: neverlogout start")
         sys.exit(1)
-
-    if action == "sauver":
-        n, chemin = sauver()
-        note(f"{n} cookies sauvegardes dans {os.path.basename(chemin)}")
-        return
 
     conf_all = table()
     cibles = {k: v for k, v in conf_all.items() if not noms or k in noms}
     if not cibles:
-        sys.exit(f"session inconnue. Connues : {', '.join(conf_all)}")
+        sys.exit(f"unknown session. Known: {', '.join(conf_all)}")
 
     onglet = Onglet()
     try:
@@ -363,10 +362,10 @@ def main():
             try:
                 ok, comment = tester(onglet, nom, conf)
             except Exception as e:
-                ok, comment = False, f"sonde impossible ({type(e).__name__})"
+                ok, comment = False, f"probe failed ({type(e).__name__})"
             if action in ("etat", "elaguer"):
                 suffixe = f"  [{comment}]" if comment else ""
-                print(f"  {nom:10} {'VIVANTE' if ok else 'MORTE'}  ({conf['compte']}){suffixe}")
+                print(f"  {nom:10} {'ALIVE' if ok else 'DEAD'}  ({conf['compte']}){suffixe}")
             if not ok:
                 morts.append((nom, conf))
 
@@ -383,9 +382,9 @@ def main():
             json.dump(conf_all, open(TABLE, "w", encoding="utf-8"),
                       indent=2, ensure_ascii=False)
             if morts:
-                note("retire de la table (pas connecte dans Chrome) : "
+                note("removed (not signed in in Chrome): "
                      + ", ".join(n for n, _ in morts))
-            print(f"  {len(conf_all)} sessions gardees : {', '.join(conf_all)}")
+            print(f"  {len(conf_all)} sessions kept: {', '.join(conf_all)}")
             return
 
         for nom, conf in morts:
@@ -406,19 +405,18 @@ def main():
                     break
             if restauree:
                 profil, detail = restauree
-                note(f"{nom} : session restauree depuis {profil} ({detail})")
+                note(f"{nom} : session restored from {profil} ({detail})")
                 if profil != conf["profil"]:
                     conf_all[nom]["profil"] = profil
                     json.dump(conf_all, open(TABLE, "w", encoding="utf-8"),
                               indent=2, ensure_ascii=False)
-                    note(f"{nom} : la table pointe desormais sur {profil}")
+                    note(f"{nom} : table now points to {profil}")
             else:
-                note(f"{nom} : pas connecte. Aucun profil Chrome "
-                     f"({', '.join(candidats)}) ne porte cette session. Connecte-toi "
-                     f"UNE fois a {nom} dans ton Chrome habituel, la greffe "
-                     f"repartira seule ensuite.")
+                note(f"{nom} : not signed in. No Chrome profile "
+                     f"({', '.join(candidats)}) holds this session. Sign in once to "
+                     f"{nom} in your everyday Chrome, repair then resumes by itself.")
         if action == "reparer" and not morts:
-            print("  toutes les sessions sont vivantes")
+            print("  all sessions are alive")
     finally:
         onglet.fermer()
 

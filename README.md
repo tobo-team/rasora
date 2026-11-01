@@ -1,87 +1,87 @@
-# navigateur bot
+# neverlogout
 
-Un Chrome que Claude Code pilote à ta place, **déjà connecté à tes comptes**, qui
-travaille sans jamais passer devant ton écran.
+**Your AI agent never gets logged out.**
 
-Tu demandes « ouvre mon Gmail et résume-moi les 3 derniers mails », « va sur mon Shopify
-et regarde les commandes du jour », « connecte-toi à ce site et envoie ce message » : il
-le fait, au lieu de te rendre un texte à copier-coller.
+A separate Chrome your agent drives for you, signed in to the accounts you allow, working
+in the background without taking over your screen. When a session dies, it repairs itself
+from your everyday Chrome. No password is shared, and nothing leaves your Mac.
 
-## Installer
+Built with Claude Code, by someone who can't code, to run a real online store.
 
-Une commande, sur un **Mac** avec **Google Chrome** installé et tes comptes connectés
-dedans :
+> Demo video: coming soon.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/vocalyagent/nav-bot/main/install.sh | bash
-```
+## Why this exists
 
-Rien à configurer ensuite. L'installation lit tes profils Chrome, trouve toute seule quels
-comptes tu as (Google, Gmail, Drive, YouTube, GitHub, Shopify, Notion, X, Instagram,
-TikTok, LinkedIn, Canva, Figma, Vercel), et branche le navigateur bot dessus.
+Agents are great until they hit a login: a site with no API, an expired session at 3 a.m.
+Tools that attach to your open Chrome help, but they use your window and stop when you
+close it. neverlogout gives the agent its own browser and keeps its sessions alive.
 
-macOS te demandera l'accès au Trousseau : c'est Chrome qui protège tes cookies, il faut
-accepter pour les recopier dans le navigateur bot. **Rien ne quitte ta machine.**
+## Install
 
-Ensuite, ouvre Claude Code et demande-lui quelque chose. Il lit tout seul la fiche
-`naviguer` installée en même temps, et sait s'en servir.
-
-## Comment ça marche
-
-- Un **Chrome séparé** sur le port 9333, profil `~/.bot-navigateur`. Il ne touche jamais
-  au Chrome que tu utilises, ni à tes onglets.
-- Il **emprunte tes cookies** au profil Chrome qui porte déjà le compte, en local, par le
-  protocole de debug de Chrome. Aucun mot de passe ne circule, aucun 2FA à refaire.
-- Il **travaille masqué**. Quatre gardiens le tiennent hors de ton écran et te rendent le
-  focus s'il essaie de passer devant.
-- On le pilote **par texte visible** (« clique sur Envoyer »), jamais en coordonnées : un
-  bandeau qui bouge de 20 px ne casse rien.
-
-## Vérifier, à la main
+macOS with Google Chrome, signed in to your accounts. Read the script, then run it:
 
 ```bash
-~/.claude/scripts/navigateur-bot.sh --etat            # allumé ?
-P=~/.claude/scripts/.venv-cdp/bin/python; S=~/.claude/scripts/nav.py
-$P ~/.claude/scripts/sessions.py etat                 # quelles sessions sont vivantes
-$P $S ouvrir https://gmail.com 20
-$P $S lire gmail 2000
-$P $S onglets
+curl -fsSL https://raw.githubusercontent.com/vocalyagent/neverlogout/main/install.sh -o install.sh
+less install.sh
+bash install.sh
 ```
 
-Une session **MORTE** veut dire une seule chose : ce compte n'est connecté dans aucun de
-tes profils Chrome. Connecte-toi **une fois** dans ton Chrome habituel, la greffe repart
-seule dans les 20 minutes.
+It asks site by site. **Nothing is allowed unless you say yes.** Everything lives in
+`~/.neverlogout`, and your own Chrome is not touched.
 
-## Ce qui est installé
-
-| Où | Quoi |
-|---|---|
-| `~/.claude/scripts/` | les scripts et leur environnement python (`.venv-cdp`) |
-| `~/.claude/skills/naviguer/` | la fiche que Claude Code lit tout seul |
-| `~/.claude/etat/`, `~/.claude/sessions/` | états et journaux |
-| `~/.bot-navigateur/` | le profil du Chrome bot (tes cookies greffés) |
-| `~/Library/LaunchAgents/com.navbot.*` | les quatre gardiens |
-
-Tout fichier qui existait déjà sous le même nom est sauvegardé en `.avant-navbot-<date>`.
-
-## Désinstaller
+## Use it
 
 ```bash
-for f in ~/Library/LaunchAgents/com.navbot.*.plist; do launchctl unload "$f"; rm "$f"; done
-~/.claude/scripts/navigateur-bot.sh --arret
-rm -rf ~/.bot-navigateur ~/.claude/skills/naviguer
+neverlogout sites            # sites found in Chrome, and which are allowed
+neverlogout allow github     # let the agent use a site
+neverlogout deny github      # forbid it and delete its cookies from the bot
+neverlogout sessions         # which sessions are alive
+neverlogout open https://github.com/notifications
+neverlogout read github 2000
+neverlogout wipe             # delete everything
 ```
 
-## Limites, dites d'avance
+If `neverlogout` is not found, use `~/.neverlogout/bin/neverlogout`.
 
-- **macOS seulement** (launchd, Trousseau, le masquage d'application). Pas de Windows,
-  pas de Linux.
-- **Google Chrome obligatoire**, avec tes comptes déjà connectés dedans.
-- Une **2FA** demandée au moment de l'action, un **paiement**, un **bouton publier** :
-  ça s'arrête là, c'est à toi. Le reste est de la technique, et c'est son travail.
+### With Claude Code
 
-## Ce qui reste chez toi
+The installer adds a skill. Ask: "open my GitHub notifications and summarize them".
 
-Tes cookies, tes comptes, ta table `sessions.json`. Ce dépôt ne contient que des scripts :
-aucune donnée personnelle, aucune clé, aucun jeton. Ta table de sessions est **générée sur
-ta machine** au moment de l'installation, à partir de ton Chrome à toi.
+### With any MCP client
+
+```json
+{
+  "mcpServers": {
+    "neverlogout": {
+      "command": "/Users/YOU/.neverlogout/bin/neverlogout",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+Running arbitrary JavaScript is not exposed over MCP, on purpose.
+
+## How it works
+
+- **A separate Chrome** on port 9333, with its own profile.
+- **Borrowed sessions.** For allowed sites only, cookies are copied locally from the Chrome
+  profile that holds the account. No password moves.
+- **Stays out of the way.** Background guardians keep it hidden and give focus back to you.
+- **Self-repair.** Every 20 minutes it tests allowed sessions and re-copies dead ones.
+- **Driven by visible text** ("click Send"), so a moved banner breaks nothing.
+
+## Security
+
+This tool handles live sessions. Read [SECURITY.md](SECURITY.md) before installing.
+
+## Limits
+
+- macOS and Google Chrome only.
+- Supported sites today: Gmail, Drive, YouTube, GitHub, Shopify, Notion, X, Instagram,
+  TikTok, LinkedIn, Canva, Figma, Vercel.
+- A 2FA prompt, a payment or a publish button stops there: those stay yours.
+
+## License
+
+MIT.

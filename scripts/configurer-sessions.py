@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
-"""configurer-sessions.py - ecrit sessions.json tout seul, en lisant le Chrome local.
+"""Decide which sites the agent may use. Nothing is allowed by default.
 
-Pourquoi : la table des sessions est la SEULE chose personnelle du systeme (quel
-profil Chrome porte quel compte, sur quels domaines, et comment verifier qu'on est
-connecte). La faire remplir a la main, c'est la garantie qu'elle sera fausse.
+  configurer-sessions.py list            sites found in Chrome, and which are allowed
+  configurer-sessions.py allow a b       allow sites
+  configurer-sessions.py allow --all     allow every site found
+  configurer-sessions.py deny a b        forbid sites and delete their cookies from the bot
+  configurer-sessions.py ask             ask site by site (used by the installer)
 
-Ici on la deduit : on lit `Local State` pour connaitre les profils et leurs comptes,
-puis on compte les cookies de chaque site dans chaque profil. Un site n'entre dans la
-table que si un profil porte vraiment ses cookies. Rien ne sort de la machine.
-
-  configurer-sessions.py            ecrit sessions.json a cote de ce fichier
-  configurer-sessions.py --montrer  affiche ce qu'il trouverait, sans rien ecrire
+`list` only counts cookies per profile. It never decrypts anything. Cookies are
+decrypted later, for allowed sites only, by cookies-vers-bot.py.
 """
 import json
 import os
@@ -18,25 +16,17 @@ import sys
 
 ICI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ICI)
-from sessions import profils_candidats  # noqa: E402  (meme dossier)
+from sessions import profils_candidats, oublier, bot_vivant  # noqa: E402
 
 CHROME = os.path.expanduser("~/Library/Application Support/Google/Chrome")
 TABLE = os.path.join(ICI, "sessions.json")
 
-# Les sites qu'on sait verifier. `signe` vide = on tranche sur la redirection vers
-# la page de connexion, ce que `sessions.py tester` sait faire. "@" = l'adresse du
-# compte Google du profil, remplacee a la volee.
+# `signe` empty = decide from the redirect to the login page. "@" = the Google
+# address of the profile.
 RECETTES = {
-    # Deux mesures du 31/08/2026, sur un profil de bot neuf, qui expliquent ces
-    # listes courtes :
-    #  - pas d'entree "google" a part : `myaccount.google.com` renvoie vers sa page
-    #    vitrine meme avec SID et SAPISID greffes (controle d'integrite d'appareil),
-    #    et on declarait MORTE une session qui ouvre Gmail sans broncher ;
-    #  - ne PAS greffer `accounts.google.com` : en l'ajoutant, gmail et drive sont
-    #    passes de VIVANTE a « page de connexion ». Les cookies du contexte d'auth
-    #    rendent l'etat incoherent et Google redemande une connexion. `.google.com`
-    #    suffit, et il couvre deja `accounts.google.com` pour la regreffe
-    #    automatique de nav.py (le domaine parent l'englobe).
+    # Do not add accounts.google.com: it made Gmail and Drive fall back to the login
+    # page. `.google.com` is enough. There is no plain "google" entry either, because
+    # myaccount.google.com redirects to its landing page even with a valid session.
     "gmail": {
         "domaines": [".google.com", "mail.google.com"],
         "sonde": "https://mail.google.com/mail/u/0/", "signe": "@"},
@@ -81,7 +71,7 @@ RECETTES = {
 
 
 def comptes():
-    """{profil: adresse} d'apres Local State. Un profil sans compte n'y est pas."""
+    """{profile: address} from Local State."""
     chemin = os.path.join(CHROME, "Local State")
     if not os.path.exists(chemin):
         return {}
@@ -91,7 +81,8 @@ def comptes():
             if v.get("user_name")}
 
 
-def construire():
+def trouves():
+    """Sites that really have cookies in a Chrome profile. Reads counts only."""
     qui = comptes()
     table = {}
     for nom, r in RECETTES.items():
@@ -101,8 +92,7 @@ def construire():
         profil = candidats[0]
         compte = qui.get(profil, profil)
         signe = compte if r["signe"] == "@" else r["signe"]
-        # un signe "@" sans compte Google connu ne prouve rien : on retombe sur
-        # la detection par redirection.
+        # "@" without a known Google address proves nothing: fall back to the redirect.
         if r["signe"] == "@" and "@" not in compte:
             signe = ""
         table[nom] = {"profil": profil, "compte": compte,
@@ -110,34 +100,99 @@ def construire():
     return table
 
 
-def main():
-    if not os.path.isdir(CHROME):
-        sys.exit("Chrome introuvable. Installe Google Chrome et connecte-toi une "
-                 "fois a tes comptes, puis relance.")
-    table = construire()
-    if not table:
-        sys.exit("aucune session trouvee dans ton Chrome. Connecte-toi au moins a "
-                 "un compte Google dans Chrome, puis relance ce script.")
-
-    if "--montrer" in sys.argv:
-        for nom, c in table.items():
-            print(f"  {nom:10} {c['profil']:12} {c['compte']}")
-        return
-
-    # on ne detruit jamais une table existante : on complete ce qui manque.
-    ancienne = {}
+def lire_table():
     if os.path.exists(TABLE):
         try:
-            ancienne = json.load(open(TABLE, encoding="utf-8"))
-        except Exception:
-            ancienne = {}
-    fusion = dict(table)
-    fusion.update(ancienne)
-    json.dump(fusion, open(TABLE, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
-    for nom, c in fusion.items():
-        marque = "  " if nom in ancienne else "+ "
-        print(f"{marque}{nom:10} {c['profil']:12} {c['compte']}")
-    print(f"\n{len(fusion)} sessions dans {TABLE}")
+            return json.load(open(TABLE, encoding="utf-8"))
+        except ValueError:
+            pass
+    return {}
+
+
+def ecrire_table(t):
+    fd = os.open(TABLE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        json.dump(t, f, indent=2, ensure_ascii=False)
+
+
+def lister():
+    table, vus = lire_table(), trouves()
+    if not vus and not table:
+        print("no supported site found in your Chrome")
+        return
+    for nom in sorted(set(vus) | set(table)):
+        c = table.get(nom) or vus[nom]
+        print(f"  {nom:10} {'allowed' if nom in table else 'not allowed':12} {c['compte']}")
+
+
+def permettre(noms):
+    vus, table = trouves(), lire_table()
+    if noms == ["--all"]:
+        noms = sorted(vus)
+    for nom in noms:
+        if nom in table:
+            print(f"  {nom}: already allowed")
+        elif nom not in RECETTES:
+            print(f"  {nom}: unknown site. Supported: {', '.join(sorted(RECETTES))}")
+        elif nom not in vus:
+            print(f"  {nom}: not signed in in Chrome, sign in once there first")
+        else:
+            table[nom] = vus[nom]
+            print(f"  {nom}: allowed ({vus[nom]['compte']})")
+    ecrire_table(table)
+
+
+def interdire(noms):
+    table = lire_table()
+    for nom in noms:
+        conf = table.pop(nom, None)
+        if conf is None:
+            print(f"  {nom}: was not allowed")
+            continue
+        # Gmail and Drive share .google.com: keep what another allowed site still needs.
+        gardes = {d for c in table.values() for d in c["domaines"]}
+        a_effacer = [d for d in conf["domaines"] if d not in gardes]
+        n = oublier(a_effacer) if a_effacer and bot_vivant() else 0
+        print(f"  {nom}: denied, {n} cookies deleted from the bot")
+    ecrire_table(table)
+
+
+def demander():
+    """One question per site, default no."""
+    vus = trouves()
+    if not vus:
+        print("  no supported site found in your Chrome")
+        return
+    try:
+        tty = open("/dev/tty")
+    except OSError:
+        print("  no terminal to ask in. Later, run: neverlogout allow <site>")
+        return
+    print("  Allow the agent to use these accounts? Default is no.\n")
+    choix = []
+    for nom, c in vus.items():
+        print(f"  {nom} ({c['compte']}) [y/N] ", end="", flush=True)
+        if tty.readline().strip().lower() in ("y", "yes"):
+            choix.append(nom)
+    print()
+    permettre(choix)
+
+
+def main():
+    if not os.path.isdir(CHROME):
+        sys.exit("Chrome data not found. Open Chrome once, sign in, then try again.")
+    action = sys.argv[1] if len(sys.argv) > 1 else "list"
+    noms = sys.argv[2:]
+    if action == "list":
+        lister()
+    elif action == "allow" and noms:
+        permettre(noms)
+    elif action == "deny" and noms:
+        interdire(noms)
+    elif action == "ask":
+        demander()
+    else:
+        sys.exit(__doc__)
 
 
 if __name__ == "__main__":

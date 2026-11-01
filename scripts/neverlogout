@@ -1,0 +1,80 @@
+#!/bin/bash
+# neverlogout: the command you actually type.
+set -uo pipefail
+BIN="$HOME/.neverlogout/bin"
+PY="$BIN/.venv-cdp/bin/python"
+PORT="${CDP_PORT:-9333}"
+
+aide() {
+  cat <<'FIN'
+neverlogout: your AI agent never gets logged out.
+
+Sites
+  neverlogout sites              sites found in Chrome, and which are allowed
+  neverlogout allow <site...>    let the agent use a site (--all for every site)
+  neverlogout deny <site...>     forbid a site and delete its cookies from the bot
+  neverlogout repair             test allowed sessions, repair the dead ones
+  neverlogout sessions           show which sessions are alive
+
+Browser
+  neverlogout start | stop       start or stop the separate Chrome
+  neverlogout show | hide        bring its windows on screen, or hide them
+  neverlogout tabs               list tabs
+  neverlogout open <url>         open a page
+  neverlogout read [tab] [n]     read a page
+  neverlogout elements [tab]     list what can be clicked
+  neverlogout click <tab> <text> click visible text
+  neverlogout fill <tab> <label> <value>
+  neverlogout press <tab> <Enter|Escape|Tab>
+  neverlogout wait <tab> <text> [seconds]
+  neverlogout screenshot <tab> <name>
+
+For other agents
+  neverlogout mcp                run the MCP server on stdio
+
+Cleanup
+  neverlogout wipe               stop everything and delete all of it, cookies included
+
+A tab is part of its URL, or #id from `tabs`.
+FIN
+}
+
+allume() { curl -s --max-time 2 "http://127.0.0.1:$PORT/json/version" >/dev/null 2>&1; }
+assure() { allume || "$BIN/navigateur-bot.sh" >/dev/null 2>&1 || { echo "the browser did not start" >&2; exit 1; }; }
+
+effacer() {
+  if [ "${1:-}" != "--yes" ]; then
+    echo "This stops neverlogout and deletes ~/.neverlogout: the bot profile, its cookies, its logs."
+    echo "Your own Chrome is not touched."
+    printf "Type wipe to confirm: "
+    read -r reponse </dev/tty || exit 1
+    [ "$reponse" = "wipe" ] || { echo "cancelled"; exit 1; }
+  fi
+  for f in "$HOME"/Library/LaunchAgents/com.neverlogout.*.plist; do
+    [ -e "$f" ] || continue
+    launchctl unload "$f" >/dev/null 2>&1
+    rm -f "$f"
+  done
+  "$BIN/navigateur-bot.sh" --arret >/dev/null 2>&1
+  sleep 1
+  pgrep -f "user-data-dir=$HOME/.neverlogout/chrome-profile" 2>/dev/null | xargs kill -9 2>/dev/null
+  rm -rf "$HOME/.claude/skills/neverlogout" "$HOME/.local/bin/neverlogout"
+  cd "$HOME" && rm -rf "$HOME/.neverlogout"
+  echo "neverlogout is gone. Your own Chrome was not touched."
+}
+
+c="${1:-help}"
+[ $# -gt 0 ] && shift
+case "$c" in
+  help|-h|--help) aide ;;
+  start)   "$BIN/navigateur-bot.sh" ;;
+  stop)    "$BIN/navigateur-bot.sh" --arret ;;
+  sites)   "$PY" "$BIN/configurer-sessions.py" list ;;
+  allow)   assure; "$PY" "$BIN/configurer-sessions.py" allow "$@" && "$PY" "$BIN/sessions.py" reparer ;;
+  deny)    assure; "$PY" "$BIN/configurer-sessions.py" deny "$@" ;;
+  repair)  assure; "$PY" "$BIN/sessions.py" reparer ;;
+  sessions) assure; "$PY" "$BIN/sessions.py" etat ;;
+  mcp)     exec "$PY" "$BIN/mcp_server.py" ;;
+  wipe)    effacer "$@" ;;
+  *)       assure; exec "$PY" "$BIN/nav.py" "$c" "$@" ;;
+esac

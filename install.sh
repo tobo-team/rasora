@@ -1,112 +1,115 @@
 #!/bin/bash
-# Installe le navigateur bot : un Chrome pilotable par Claude Code, deja connecte
-# a tes comptes, qui travaille hors de ton ecran.
+# Installs neverlogout. Everything lives in ~/.neverlogout, your own Chrome is not touched.
 #
-#   curl -fsSL https://raw.githubusercontent.com/vocalyagent/nav-bot/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/vocalyagent/neverlogout/main/install.sh -o install.sh
+#   less install.sh
+#   bash install.sh
 #
-# Ne demande rien, ne touche pas a ton Chrome, ne fait sortir aucune donnee.
-# Tout ce qui existait deja sous le meme nom est sauvegarde en .avant-navbot.
+# No site is allowed unless you say yes.
+#   NEVERLOGOUT_SITES=github,gmail    allow these sites without asking
+#   NEVERLOGOUT_NO_LAUNCHD=1          do not install the background guardians
 
 set -uo pipefail
 
-DEPOT="${NAVBOT_DEPOT:-https://github.com/vocalyagent/nav-bot}"
-BRANCHE="${NAVBOT_BRANCHE:-main}"
-DEST="${NAVBOT_DEST:-$HOME/.claude/scripts}"
-SKILLS="${NAVBOT_SKILLS:-$HOME/.claude/skills}"
-ETAT="$HOME/.claude/etat"
+DEPOT="${NEVERLOGOUT_REPO:-https://github.com/vocalyagent/neverlogout}"
+BRANCHE="${NEVERLOGOUT_BRANCH:-main}"
+RACINE="$HOME/.neverlogout"
+DEST="$RACINE/bin"
+ETAT="$RACINE/state"
 VENV="$DEST/.venv-cdp"
+PORT="${CDP_PORT:-9333}"
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 
 V=$'\033[32m'; R=$'\033[31m'; J=$'\033[33m'; N=$'\033[0m'
 ok()   { echo "${V}ok${N}   $*"; }
 info() { echo "     $*"; }
 stop() { echo "${R}stop${N} $*" >&2; exit 1; }
-avert(){ echo "${J}note${N} $*"; }
+note() { echo "${J}note${N} $*"; }
 
 echo
-echo "  navigateur bot - installation"
+echo "  neverlogout: install"
 echo "  ----------------------------------------------"
 
-# 1. Le terrain -----------------------------------------------------------------
-[ "$(uname)" = "Darwin" ] || stop "ce systeme ne marche que sur Mac (launchd, Trousseau, Chrome)."
-[ -x "$CHROME" ] || stop "Google Chrome est introuvable. Installe-le, connecte-toi a tes comptes, puis relance."
-command -v python3 >/dev/null || stop "python3 manquant. Ouvre le Terminal et tape : xcode-select --install"
-[ -d "$HOME/Library/Application Support/Google/Chrome" ] || stop "Chrome n'a jamais ete lance sur ce Mac. Ouvre-le une fois, connecte-toi, puis relance."
-ok "Mac, Chrome et python3 sont la"
+# 1. Requirements ---------------------------------------------------------------
+[ "$(uname)" = "Darwin" ] || stop "macOS only for now (launchd, Keychain, Chrome)."
+[ -x "$CHROME" ] || stop "Google Chrome not found. Install it, sign in to your accounts, then run this again."
+command -v python3 >/dev/null || stop "python3 is missing. Run: xcode-select --install"
+[ -d "$HOME/Library/Application Support/Google/Chrome" ] || stop "Chrome has never been opened here. Open it once, sign in, then run this again."
+if curl -s --max-time 2 "http://127.0.0.1:$PORT/json/version" >/dev/null 2>&1 \
+  && ! pgrep -f "user-data-dir=$RACINE/chrome-profile" >/dev/null 2>&1; then
+  stop "port $PORT is already used by something else. Close it, or set CDP_PORT."
+fi
+ok "macOS, Chrome and python3 found"
 
-# 2. Les fichiers ---------------------------------------------------------------
-# Lance depuis un dossier du depot, on copie ; lance par curl, on telecharge.
+# 2. Files ----------------------------------------------------------------------
 SOURCE=""
 ICI="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || true)"
 if [ -n "$ICI" ] && [ -f "$ICI/scripts/nav.py" ]; then
   SOURCE="$ICI"
-  info "fichiers pris dans $ICI"
 else
   TMP="$(mktemp -d)"
   trap 'rm -rf "$TMP"' EXIT
   URL="${DEPOT}/archive/refs/heads/${BRANCHE}.tar.gz"
-  curl -fsSL "$URL" | tar xz -C "$TMP" 2>/dev/null || stop "telechargement impossible depuis $URL"
-  SOURCE="$(find "$TMP" -maxdepth 1 -type d -name 'nav-bot-*' | head -1)"
-  [ -f "$SOURCE/scripts/nav.py" ] || stop "archive incomplete"
-  info "fichiers telecharges"
+  curl -fsSL "$URL" | tar xz -C "$TMP" 2>/dev/null || stop "could not download $URL"
+  SOURCE="$(find "$TMP" -maxdepth 1 -type d -name 'neverlogout-*' | head -1)"
+  [ -f "$SOURCE/scripts/nav.py" ] || stop "incomplete archive"
 fi
 
-mkdir -p "$DEST" "$SKILLS" "$ETAT" "$HOME/.claude/sessions"
-DATE="$(date +%Y%m%d-%H%M)"
-for f in "$SOURCE"/scripts/*; do
-  base="$(basename "$f")"
-  cible="$DEST/$base"
-  if [ -f "$cible" ] && ! cmp -s "$f" "$cible"; then
-    cp "$cible" "$cible.avant-navbot-$DATE"
-    avert "$base existait deja, sauvegarde en $base.avant-navbot-$DATE"
-  fi
-  cp "$f" "$cible"
-done
-chmod +x "$DEST"/*.py "$DEST"/*.sh 2>/dev/null
-ok "scripts installes dans $DEST"
+umask 077
+mkdir -p "$DEST" "$ETAT" "$RACINE/sessions"
+chmod 700 "$RACINE"
+cp "$SOURCE"/scripts/* "$DEST"/
+chmod +x "$DEST"/*.py "$DEST"/*.sh "$DEST/neverlogout" 2>/dev/null
+ok "files installed in $RACINE"
 
 # 3. Python ---------------------------------------------------------------------
-if [ ! -x "$VENV/bin/python" ]; then
-  python3 -m venv "$VENV" >/dev/null 2>&1 || stop "creation de l'environnement python impossible"
-fi
+[ -x "$VENV/bin/python" ] || python3 -m venv "$VENV" >/dev/null 2>&1 || stop "could not create the python environment"
 "$VENV/bin/pip" install -q --upgrade pip >/dev/null 2>&1
 "$VENV/bin/pip" install -q websocket-client cryptography pillow beautifulsoup4 >/dev/null 2>&1 \
-  || stop "installation des dependances python impossible (reseau ?)"
-ok "environnement python pret"
+  || stop "could not install python dependencies (network?)"
+ok "python environment ready"
 
-# 4. La skill que Claude lira ---------------------------------------------------
-if [ -d "$SKILLS/naviguer" ] && ! cmp -s "$SOURCE/skills/naviguer/SKILL.md" "$SKILLS/naviguer/SKILL.md"; then
-  mv "$SKILLS/naviguer" "$SKILLS/naviguer.avant-navbot-$DATE"
-  avert "une skill 'naviguer' existait, sauvegardee en naviguer.avant-navbot-$DATE"
+# 4. The command ----------------------------------------------------------------
+if [ -d "$HOME/.local/bin" ]; then
+  ln -sf "$DEST/neverlogout" "$HOME/.local/bin/neverlogout"
 fi
-mkdir -p "$SKILLS/naviguer"
-cp "$SOURCE/skills/naviguer/SKILL.md" "$SKILLS/naviguer/SKILL.md"
-ok "skill 'naviguer' installee (Claude Code la lira tout seul)"
 
-# 5. Le navigateur --------------------------------------------------------------
+# 5. Claude Code skill, only if Claude Code is here -----------------------------
+if [ -d "$HOME/.claude" ]; then
+  mkdir -p "$HOME/.claude/skills/neverlogout"
+  cp "$SOURCE/skills/neverlogout/SKILL.md" "$HOME/.claude/skills/neverlogout/SKILL.md"
+  ok "Claude Code skill installed"
+fi
+
+# 6. The browser ----------------------------------------------------------------
 "$DEST/navigateur-bot.sh" >/dev/null 2>&1
-if "$DEST/navigateur-bot.sh" --etat >/dev/null 2>&1; then
-  ok "navigateur bot demarre sur le port 9333, hors de ton ecran"
+"$DEST/navigateur-bot.sh" --etat >/dev/null 2>&1 || stop "the browser did not start. Run: $DEST/navigateur-bot.sh"
+ok "separate Chrome running on port $PORT, hidden"
+
+# 7. Your choice of sites -------------------------------------------------------
+echo
+if [ -n "${NEVERLOGOUT_SITES:-}" ]; then
+  # shellcheck disable=SC2086
+  "$VENV/bin/python" "$DEST/configurer-sessions.py" allow ${NEVERLOGOUT_SITES//,/ }
 else
-  stop "le navigateur bot n'a pas demarre. Relance : $DEST/navigateur-bot.sh"
+  "$VENV/bin/python" "$DEST/configurer-sessions.py" ask
+fi
+echo
+if [ -s "$DEST/sessions.json" ] && [ "$(cat "$DEST/sessions.json")" != "{}" ]; then
+  info "Copying sessions. macOS will ask for Keychain access: that is Chrome's cookie key."
+  info "Only the sites you allowed are read, and nothing leaves your Mac."
+  "$VENV/bin/python" "$DEST/sessions.py" reparer 2>&1 | sed 's/^/     /'
+else
+  note "no site allowed yet. Later: neverlogout allow <site>"
 fi
 
-# 6. Tes sessions, trouvees toutes seules ---------------------------------------
-echo
-info "lecture de tes profils Chrome..."
-"$VENV/bin/python" "$DEST/configurer-sessions.py" || stop "configuration des sessions impossible"
-echo
-info "greffe des sessions dans le navigateur bot (ton Trousseau va demander l'acces,"
-info "c'est Chrome qui protege tes cookies : accepte, rien ne quitte le Mac)"
-"$VENV/bin/python" "$DEST/sessions.py" reparer 2>&1 | sed 's/^/     /'
-
-# 7. Les gardiens ---------------------------------------------------------------
-if [ "${NAVBOT_SANS_LAUNCHD:-0}" = "1" ]; then
-  avert "gardiens non installes (NAVBOT_SANS_LAUNCHD=1)"
+# 8. Guardians ------------------------------------------------------------------
+if [ "${NEVERLOGOUT_NO_LAUNCHD:-0}" = "1" ]; then
+  note "background guardians not installed"
 else
   AGENTS="$HOME/Library/LaunchAgents"
   mkdir -p "$AGENTS"
-  plist() { # nom, arg-python, [intervalle | boucle]
+  plist() { # name, python, script, interval or "boucle", [argument]
     local nom="$1" py="$2" script="$3" mode="$4" arg="${5:-}"
     local f="$AGENTS/$nom.plist"
     launchctl unload "$f" >/dev/null 2>&1
@@ -131,38 +134,22 @@ else
     } > "$f"
     launchctl load "$f" >/dev/null 2>&1
   }
-  plist com.navbot.sessions "$VENV/bin/python" "$DEST/sessions.py"  1200 reparer
-  plist com.navbot.nav-gc   /usr/bin/python3    "$DEST/nav-gc.py"    300
-  plist com.navbot.nav-fond "$VENV/bin/python"  "$DEST/nav-fond.py"  boucle
-  # focus-fond a besoin de PyObjC, que seul le python du systeme embarque.
-  plist com.navbot.focus-fond /usr/bin/python3    "$DEST/focus-fond.py" boucle
-  ok "gardiens en place : sessions rafraichies toutes les 20 min, onglets"
-  ok "nettoyes toutes les 5 min, fenetre tenue hors de ton ecran en permanence,"
-  ok "focus rendu a ton app si le navigateur bot passe devant"
+  plist com.neverlogout.sessions "$VENV/bin/python" "$DEST/sessions.py"  1200 reparer
+  plist com.neverlogout.nav-gc   /usr/bin/python3    "$DEST/nav-gc.py"    300
+  plist com.neverlogout.nav-fond "$VENV/bin/python"  "$DEST/nav-fond.py"  boucle
+  # focus-fond needs PyObjC, which only the system python ships.
+  plist com.neverlogout.focus-fond /usr/bin/python3    "$DEST/focus-fond.py" boucle
+  ok "guardians running: sessions checked every 20 min, old tabs closed, window kept hidden"
 fi
 
-# 8. Verdict --------------------------------------------------------------------
-echo
-echo "  ----------------------------------------------"
-# `elaguer` teste tout et retire de la table ce qui n'est connecte nulle part :
-# la liste finale ne montre que des sessions qui marchent vraiment.
-"$VENV/bin/python" "$DEST/sessions.py" elaguer 2>&1 | sed 's/^/  /'
-echo "  ----------------------------------------------"
-cat <<'FIN'
+cat <<FIN
 
-  C'est installe. Ouvre Claude Code et demande-lui par exemple :
+  ----------------------------------------------
+  Done.
 
-      "ouvre mon Gmail dans le navigateur bot et dis-moi les 3 derniers mails"
-      "va sur ma boutique Shopify et regarde les commandes du jour"
-
-  Il connait deja la marche a suivre, la skill 'naviguer' lui explique tout.
-
-  A la main, si tu veux voir :
-      ~/.claude/scripts/navigateur-bot.sh --etat
-      ~/.claude/scripts/.venv-cdp/bin/python ~/.claude/scripts/nav.py ouvrir https://gmail.com
-      ~/.claude/scripts/.venv-cdp/bin/python ~/.claude/scripts/nav.py lire gmail
-
-  Une session marquee MORTE : connecte-toi UNE fois a ce site dans ton Chrome
-  habituel, la greffe repart toute seule dans les 20 minutes.
+  Check it:        $DEST/neverlogout sessions
+  Allow a site:    $DEST/neverlogout allow github
+  Other agents:    $DEST/neverlogout mcp
+  Remove it all:   $DEST/neverlogout wipe
 
 FIN

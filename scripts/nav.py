@@ -14,7 +14,7 @@ Revision 16/08/2026 (ce qu'on a pris a Claude in Chrome, sans payer les captures
   - `photo --sur` : cadrer une section au lieu de capturer 6000 px de page.
   - plus aucun sleep fixe dans `ouvrir` et `clic` : on sonde readyState.
 
-Port par defaut 9333 = navigateur bot (profil ~/.bot-navigateur), jamais le Chrome
+Port par defaut 9333 = navigateur bot (profil ~/.neverlogout/chrome-profile), jamais le Chrome
 personnel. Surcharger avec CDP_PORT (9222 = vrai Chrome via cdp-chrome.sh).
 
 Usage :
@@ -85,7 +85,7 @@ def fenetre(o, tid):
 # Drapeau du mode discret. Il sert a REAPPLIQUER la discretion toute seule : une
 # popup de connexion (« Continuer avec Google ») ouvre une NOUVELLE fenetre, qui
 # nait au milieu de l'ecran de l'utilisateur meme quand les autres sont hors champ.
-DRAPEAU = os.path.expanduser("~/.bot-navigateur/.discret")
+DRAPEAU = os.path.expanduser("~/.neverlogout/chrome-profile/.discret")
 
 
 def _fenetres(o):
@@ -173,13 +173,13 @@ def placer_fenetres(o, mode):
     return bouges
 
 
-COEUR = os.path.expanduser("~/.claude/etat/nav-fond.coeur")
+COEUR = os.path.expanduser("~/.neverlogout/state/nav-fond.coeur")
 
 
 def rester_discret(o=None):
     """A appeler apres toute action qui peut ouvrir une fenetre (clic, touche).
 
-    Si le gardien `nav-fond.py` bat (launchd `com.bevu.nav-fond`), il regarde les
+    Si le gardien `nav-fond.py` bat (launchd `com.neverlogout.nav-fond`), il regarde les
     fenetres toutes les 1,5 s et fait ce travail mieux que nous : on ne paie pas
     une connexion navigateur a chaque clic pour refaire la meme chose. Sinon on
     verifie soi-meme, en lecture seule, et on n'ecrit que si une fenetre est
@@ -209,7 +209,7 @@ def rester_discret(o=None):
 #      session qui lit et clique dans une application (Shopify, Runway) sans
 #      changer d'URL voyait son onglet disparaitre sous ses doigts.
 # On tient donc un journal : quel onglet sert, a quelle voie, et quand.
-JOURNAL = os.path.expanduser("~/.claude/etat/onglets-actifs.json")
+JOURNAL = os.path.expanduser("~/.neverlogout/state/onglets-actifs.json")
 
 
 def journal_lire():
@@ -266,14 +266,14 @@ def trouver(motif=""):
     """
     ts = onglets()
     if not ts:
-        sys.exit("aucun onglet ouvert (~/.claude/scripts/navigateur-bot.sh)")
+        sys.exit("no open tab, run: (~/.neverlogout/bin/navigateur-bot.sh)")
     if not motif:
         return ts[0]
 
     if motif.startswith("#"):
         c = [t for t in ts if t["id"].lower().startswith(motif[1:].lower())]
         if not c:
-            sys.exit(f"aucun onglet {motif}. Ouverts :\n" + _liste_courte(ts))
+            sys.exit(f"no tab {motif}. Open tabs:\n" + _liste_courte(ts))
         return c[0]
 
     if motif.startswith("@"):
@@ -282,12 +282,12 @@ def trouver(motif=""):
         for t in ts:
             if (j.get(t["id"], {}).get("voie") or "").lower() == voie:
                 return t
-        sys.exit(f"aucun onglet reserve a la voie « {voie} ». "
+        sys.exit(f"no tab reserved for lane '{voie}'. "
                  f"La reserver : nav.py reserver <motif-url> {voie}\n" + _liste_courte(ts))
 
     c = [t for t in ts if motif.lower() in t.get("url", "").lower()]
     if not c:
-        sys.exit(f"aucun onglet ne contient '{motif}'. Ouverts :\n" + _liste_courte(ts))
+        sys.exit(f"no tab contains '{motif}'. Open tabs:\n" + _liste_courte(ts))
     if len(c) > 1:
         # A egalite on prend celui dont on s'est servi en dernier, pas le premier
         # de la liste : /json/list est ordonne par activite du navigateur, donc il
@@ -295,7 +295,7 @@ def trouver(motif=""):
         j = journal_lire()
         c.sort(key=lambda t: j.get(t["id"], {}).get("vu", 0), reverse=True)
         voie = j.get(c[0]["id"], {}).get("voie")
-        print(f"NOTE {len(c)} onglets contiennent '{motif}', on garde {court(c[0]['id'])}"
+        print(f"NOTE {len(c)} tabs match '{motif}', using {court(c[0]['id'])}"
               + (f" (voie {voie})" if voie else " (le plus recemment utilise)")
               + ". Viser sans ambiguite : " + court(c[0]["id"]), file=sys.stderr)
     return c[0]
@@ -371,7 +371,7 @@ def soigner(url):
     nom = site_connu(url)
     if not nom:
         return None
-    print(f"SESSION {nom} TOMBEE (page de connexion). Regreffe en cours...")
+    print(f"SESSION {nom} DOWN (login page). Repairing...")
     ici = os.path.dirname(os.path.abspath(__file__))
     try:
         r = __import__("subprocess").run(
@@ -381,7 +381,7 @@ def soigner(url):
             if l.strip():
                 print("  " + l.strip()[:180])
     except Exception as e:
-        print("  regreffe impossible :", str(e)[:120])
+        print("  repair failed:", str(e)[:120])
         return None
     return nom
 
@@ -814,19 +814,19 @@ def choisir_cadre(o, args):
     if quoi.isdigit():
         i = int(quoi)
         if i >= len(fs):
-            sys.exit(f"cadre {i} inexistant ({len(fs) - 1} iframe(s))")
+            sys.exit(f"frame {i} not found ({len(fs) - 1} iframe(s))")
         c = fs[i]
     else:
         c = next((f for f in fs[1:] if quoi.lower() in (f["url"] or "").lower()), None)
         if not c:
-            sys.exit("aucun cadre ne contient '%s'. Vus :\n%s" %
+            sys.exit("no frame contains '%s'. Seen:\n%s" %
                      (quoi, "\n".join("  %d %s" % (n, f["url"][:90])
                                       for n, f in enumerate(fs))))
     if c.get("ws"):
         return Onglet({"webSocketDebuggerUrl": c["ws"]}), None, c["dx"], c["dy"]
     ctx = o.contexte(c["id"])
     if not ctx:
-        sys.exit("cadre inaccessible")
+        sys.exit("frame not reachable")
     return o, ctx, c["dx"], c["dy"]
 
 
@@ -841,13 +841,19 @@ def bloc(titre, lignes):
 def main():
     if len(sys.argv) < 2:
         sys.exit(__doc__)
+    # English command names. The French ones keep working.
+    ALIAS = {"open": "ouvrir", "status": "etat", "read": "lire", "wait": "attendre",
+             "click": "clic", "fill": "champ", "select": "menu", "press": "touche",
+             "tabs": "onglets", "reserve": "reserver", "screenshot": "photo",
+             "frames": "cadres", "hide": "discret", "show": "montrer", "close": "fermer"}
+    sys.argv[1] = ALIAS.get(sys.argv[1], sys.argv[1])
     cmd = sys.argv[1]
     brut = sys.argv[2:]          # options comprises
     a = positionnels(brut)      # arguments a leur place, options retirees
 
     if cmd == "google":
         # Quel compte Google porte le profil du bot. La session vit dans
-        # ~/.bot-navigateur : une fois connectee, elle tient, et tout site qui
+        # ~/.neverlogout/chrome-profile : une fois connectee, elle tient, et tout site qui
         # propose « Continuer avec Google » se connecte sans mot de passe.
         tid = navigateur().call("Target.createTarget", {
             "url": "https://myaccount.google.com/", "background": True}).get("targetId")
@@ -861,11 +867,11 @@ def main():
             if m not in mails:
                 mails.append(m)
         connecte = "connexion" not in (o.js("location.href") or "").lower()
-        print("COMPTE :", ", ".join(mails) if mails else "(aucun email lu)")
-        print("ETAT   :", "connecte" if connecte and mails else "PAS connecte")
+        print("ACCOUNT:", ", ".join(mails) if mails else "(no email found)")
+        print("STATE  :", "signed in" if connecte and mails else "NOT signed in")
         if not (connecte and mails):
             print("Pour connecter : nav.py montrer, l utilisateur se connecte a la main,\n"
-                  "puis nav.py discret. La session tient ensuite dans ~/.bot-navigateur.")
+                  "puis nav.py discret. La session tient ensuite dans ~/.neverlogout/chrome-profile.")
         urllib.request.urlopen(f"{BASE}/json/close/{tid}").read()
         return
 
@@ -890,8 +896,8 @@ def main():
         voie = a[1]
         toucher(t["id"], t.get("url", ""), voie=voie,
                 vivants={x["id"] for x in onglets()})
-        print(f"{court(t['id'])} reserve a la voie @{voie}  {t.get('url','')[:90]}")
-        print(f"Les commandes de cette session peuvent viser @{voie} au lieu d'un bout d'URL.")
+        print(f"{court(t['id'])} reserved for lane @{voie}  {t.get('url','')[:90]}")
+        print(f"Commands can now target @{voie} instead of part of a URL.")
         return
 
     if cmd == "ouvrir":
@@ -921,7 +927,7 @@ def main():
                 break
             time.sleep(0.05)
         if not t:
-            sys.exit("l'onglet ne s'est pas ouvert")
+            sys.exit("the tab did not open")
         o = Onglet(t)
         att = o.pret(timeout)
         if echec_chargement(o):
@@ -934,8 +940,8 @@ def main():
                     urllib.request.urlopen(f"{BASE}/json/close/{tid}").read()
                 except Exception:
                     pass
-                print(f"ECHEC DE CHARGEMENT apres 2 essais : {url}")
-                print("La page n'existe pas, le reseau a coupe, ou le site nous refuse. "
+                print(f"LOAD FAILED after 2 tries: {url}")
+                print("The page does not exist, the network dropped, or the site refused us. "
                       "Onglet referme.")
                 sys.exit(1)
         t = next(x for x in onglets() if x["id"] == tid)
@@ -947,15 +953,15 @@ def main():
             att = o.pret(timeout)
             t = next(x for x in onglets() if x["id"] == tid)
             url_finale = t.get("url", "")
-            print("SESSION REPAREE" if not page_de_connexion(url_finale) else
-                  "TOUJOURS DECONNECTE : nav.py montrer, l utilisateur se connecte a la "
+            print("SESSION REPAIRED" if not page_de_connexion(url_finale) else
+                  "STILL SIGNED OUT: run `neverlogout show` and sign in by hand a la "
                   "main, puis nav.py discret")
         voie = brut[brut.index("--voie") + 1] if "--voie" in brut else None
         toucher(tid, url_finale, voie=voie, vivants={x["id"] for x in onglets()})
         print("URL:", url_finale[:130])
-        print("TITRE:", t.get("title", "")[:100])
+        print("TITLE:", t.get("title", "")[:100])
         n = rester_discret()
-        print(f"PRET en {att}s  {court(tid)}" + (f" @{voie}" if voie else "")
+        print(f"READY in {att}s  {court(tid)}" + (f" @{voie}" if voie else "")
               + ("  (fenetre repoussee hors ecran)" if n else ""))
         return
 
@@ -967,7 +973,7 @@ def main():
 
     if cmd == "etat":
         print("URL:", t.get("url", "")[:130])
-        print("TITRE:", t.get("title", "")[:100])
+        print("TITLE:", t.get("title", "")[:100])
         print("SESSION:", json.dumps(o.js(JS_CONNECTE)))
         # `etat` est la commande de diagnostic : si la page est un ecran de
         # connexion d'un site connu, on repare au lieu de le signaler a l utilisateur.
@@ -976,15 +982,15 @@ def main():
             o.call("Page.reload")
             o.pret(20)
             neuve = o.js("location.href") or ""
-            print("URL APRES REPARATION:", neuve[:130])
+            print("URL AFTER REPAIR:", neuve[:130])
             if page_de_connexion(neuve):
-                print("TOUJOURS DECONNECTE : nav.py montrer, l utilisateur se connecte "
+                print("STILL SIGNED OUT: run `neverlogout show` and sign in by hand "
                       "a la main, puis nav.py discret")
 
     elif cmd == "lire":
         n = int(a[1]) if len(a) > 1 else 4000
         if echec_chargement(o):
-            sys.exit("PAGE EN ERREUR (chrome-error) : la navigation a echoue, "
+            sys.exit("PAGE ERROR (chrome-error): navigation failed, "
                      "rien a lire. Refaire `nav.py ouvrir`.")
         print((oc.js("document.body.innerText || document.body.textContent", ctx)
                or "")[:n])
@@ -999,7 +1005,7 @@ def main():
         bloc("MENUS", r["menus"])
         bloc("IFRAMES", r["cadres"])
         if not any(r.values()):
-            print("PAGE EN ERREUR (chrome-error) : la navigation a echoue"
+            print("PAGE ERROR (chrome-error): navigation failed"
                   if echec_chargement(o) else
                   "aucun element interactif visible (page vide, ou tout est en iframe)")
 
@@ -1010,11 +1016,11 @@ def main():
             corps = oc.js("document.body.innerText || document.body.textContent",
                           ctx) or ""
             if texte.lower() in corps.lower():
-                print(f"VU « {texte} » apres {round(time.time()-t0,1)}s")
+                print(f"SEEN '{texte}' after {round(time.time()-t0,1)}s")
                 print("URL:", o.js("location.href")[:130])
                 return
             time.sleep(0.3)
-        print(f"PAS VU « {texte} » apres {timeout}s")
+        print(f"PAS SEEN '{texte}' after {timeout}s")
         print("URL:", o.js("location.href")[:130])
         sys.exit(1)
 
@@ -1024,19 +1030,19 @@ def main():
         # suivant : sur une fiche produit Shopify, le premier « Ajouter au
         # panier » est celui de la barre sticky, masquee hors ecran par design.
         r = pos = None
-        # Borne de temps : sur un theme anime (Bevu, GSAP), chaque candidat coute
+        # Borne de temps : sur un theme anime (GSAP), chaque candidat coute
         # jusqu'a 3 s de stabilisation et il y en a 8 : on passait une demi-minute
         # a chercher un bouton deja trouve au premier essai. On garde le meilleur
         # candidat vu quand la borne tombe.
         fin_recherche = time.time() + 6
         for rang in range(8):
             if rang and time.time() > fin_recherche:
-                print(f"NOTE recherche bornee a 6 s, on clique le candidat {rang - 1}")
+                print(f"NOTE search capped at 6 s, clicking candidate {rang - 1}")
                 break
             r = oc.js(JS_CIBLE % (json.dumps(a[1]), rang), ctx)
             if not isinstance(r, dict) or not r.get("ok"):
                 if rang == 0:
-                    print("PAS TROUVE.", json.dumps(r, ensure_ascii=False)[:600])
+                    print("NOT FOUND.", json.dumps(r, ensure_ascii=False)[:600])
                     sys.exit(1)
                 break
             stabiliser_cible(oc, ctx=ctx)
@@ -1046,11 +1052,11 @@ def main():
                 if p["dansVue"]:
                     break
         if pos is None:
-            sys.exit("cible perdue apres defilement")
+            sys.exit("target lost after scrolling")
         if not pos["dansVue"]:
-            print("ATTENTION cible hors de la vue apres defilement, clic incertain")
+            print("WARNING target out of view after scrolling, click uncertain")
         if pos.get("intercepte"):
-            print(f"ATTENTION <{pos.get('recoit')}> recouvre la cible : le clic ira"
+            print(f"WARNING <{pos.get('recoit')}> covers the target: the click will land"
                   " dessus. Fermer le bandeau/la modale d'abord.")
         avant_url = oc.js("location.href", ctx)
         clic_souris(o, pos["x"] + dx, pos["y"] + dy)
@@ -1075,13 +1081,13 @@ def main():
                 att = o.pret(8, plancher=0.5)
                 replie = " (repli .click())"
         rester_discret(o)   # une popup de connexion nait au milieu de l'ecran
-        print(f"CLIC sur « {r['texte']} » | pret en {att}s{replie}")
+        print(f"CLICK on '{r['texte']}' | ready in {att}s{replie}")
         apres = o.js("location.href") or ""
         print("URL:", apres[:130])
         # On ne regreffe pas au milieu d'un enchainement (on perdrait le formulaire
         # en cours), mais on nomme la panne et sa reparation en une ligne.
         if page_de_connexion(apres) and site_connu(apres):
-            print(f"SESSION {site_connu(apres)} TOMBEE : "
+            print(f"SESSION {site_connu(apres)} DOWN: "
                   f"sessions.py reparer {site_connu(apres)}, puis refaire ce clic")
 
     elif cmd == "champ":
@@ -1101,7 +1107,7 @@ def main():
                                               "nativeVirtualKeyCode": code})
         att = o.pret(8)
         rester_discret(o)
-        print("TOUCHE", k, f"| pret en {att}s | URL:", o.js("location.href")[:120])
+        print("KEY", k, f"| ready in {att}s | URL:", o.js("location.href")[:120])
 
     elif cmd == "js":
         print(json.dumps(oc.js(a[1], ctx), ensure_ascii=False)[:4000])
@@ -1142,7 +1148,7 @@ def main():
         bloc("ERREURS", list(dict.fromkeys(erreurs))[:20])
         bloc("HTTP >= 400", list(dict.fromkeys(http))[:20])
         if not erreurs and not http:
-            print(f"RAS sur {secondes}s d'ecoute" +
+            print(f"nothing in {secondes}s of listening" +
                   (" (avec rechargement)" if "--recharger" in brut else
                    " (sans rechargement : ajouter --recharger pour voir le chargement)"))
 
@@ -1161,7 +1167,7 @@ def main():
             fin_recherche = time.time() + 6      # meme borne que pour le clic
             for rang in range(depart, depart + 10):
                 if rang > depart and time.time() > fin_recherche:
-                    print("NOTE cadrage borne a 6 s, on garde le meilleur candidat vu")
+                    print("NOTE framing capped at 6 s, keeping best candidate")
                     break
                 r = o.js(JS_RECT % (json.dumps(cible), rang))
                 if not isinstance(r, dict) or not r.get("ok"):
@@ -1187,12 +1193,12 @@ def main():
                            max(0, garde["y"] - garde["h"] / 2 - m),
                            garde["w"] + 2 * m, garde["h"] + 2 * m)
                 au_dela, clip = False, False   # capture de la vue, sans clip
-                print(f"cadre sur <{garde['quoi']}> (candidat {garde['rang']} sur "
+                print(f"framed on <{garde['quoi']}> (candidate {garde['rang']} of "
                       f"{garde['total']}, --rang N pour en viser un autre)")
                 if not garde["dansVue"]:
-                    print("ATTENTION element hors de la vue, cadrage approximatif")
+                    print("WARNING element out of view, framing is approximate")
             else:
-                print("cadrage impossible, capture entiere")
+                print("framing failed, full capture")
         if clip is None:
             # hauteur du vrai conteneur de defilement : sur un thema qui defile un
             # div interne, document.body.scrollHeight vaut la hauteur de la fenetre
@@ -1214,10 +1220,10 @@ def main():
             try:
                 res = o.call("Page.captureScreenshot", opts, timeout=25)
             except Exception:
-                sys.exit("capture impossible : le rendu ne repond pas (2 essais). "
+                sys.exit("capture failed: rendering not responding (2 tries). "
                          "Recharger la page, ou capturer une section avec --sur.")
         if res.get("_erreur"):
-            sys.exit("capture impossible : " + json.dumps(res["_erreur"])[:200])
+            sys.exit("capture failed: " + json.dumps(res["_erreur"])[:200])
         p = f"/tmp/{a[1]}.png"
         brut = base64.b64decode(res["data"])
         if recadre:
@@ -1239,13 +1245,13 @@ def main():
 
     elif cmd == "cadres":
         fs = o.frames()
-        print("0  (page principale)  " + (fs[0]["url"] or "")[:90])
+        print("0  (main page)  " + (fs[0]["url"] or "")[:90])
         for n, f in enumerate(fs[1:], 1):
             print(f"{n}  offset {int(f['dx'])},{int(f['dy'])}  " + (f["url"] or "")[:90])
         if len(fs) == 1:
-            print("aucune iframe")
+            print("no iframe")
         else:
-            print("\nAgir dedans : ajouter --cadre <n> ou --cadre <bout-d-url>")
+            print("\nTo act inside: add --cadre <n> or --cadre <part-of-url>")
 
     elif cmd in ("discret", "montrer"):
         # Ne touche QUE le navigateur bot : tout passe par le port 9333, jamais par
@@ -1254,7 +1260,7 @@ def main():
         #
         # Hors ecran, et surtout pas `minimized` : une fenetre minimisee passe en
         # visibilityState 'hidden' et Chrome met son rendu en veille. Sur un theme
-        # anime (Bevu, GSAP) les elements ne sont plus positionnes et le clic ne
+        # anime (GSAP) les elements ne sont plus positionnes et le clic ne
         # trouve plus rien. macOS refuse de sortir totalement une fenetre de
         # l'ecran : il reste un carre d'environ 40 px en bas a gauche.
         # Le vrai levier est au niveau de l'APPLICATION : une app masquee n'a pas
@@ -1270,16 +1276,16 @@ def main():
                 if l.strip():
                     print(l.rstrip())
         except Exception as e:
-            print("masquage impossible :", str(e)[:100])
+            print("hide failed:", str(e)[:100])
         n = placer_fenetres(o, cmd)
         if cmd == "discret":
-            print(f"application masquee, {n} fenetre(s) deplacee(s) (port {PORT}). "
+            print(f"app hidden, {n} window(s) moved (port {PORT}). "
                   "Clics, lecture et captures continuent de fonctionner : la page se "
                   "croit visible et focalisee (emulation), et elle l'est pour le site.")
         else:
             if os.path.exists(DRAPEAU):
                 os.remove(DRAPEAU)
-            print(f"{n} fenetre(s) a l'ecran (login a faire a la main). "
+            print(f"{n} window(s) on screen (sign in by hand). "
                   "Repasser en `discret` juste apres.")
 
     elif cmd == "fermer":
@@ -1287,7 +1293,7 @@ def main():
         # la voie est liberee avec l'onglet ; on l'exclut a la main, la fermeture
         # cote Chrome est asynchrone et il figure encore dans /json/list
         purger({x["id"] for x in onglets()} - {t["id"]})
-        print("ferme", court(t["id"]))
+        print("closed", court(t["id"]))
 
     else:
         sys.exit(__doc__)
