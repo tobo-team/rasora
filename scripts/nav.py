@@ -353,7 +353,7 @@ def site_connu(url):
         return None
     for nom, conf in table.items():
         for d in conf.get("domaines", []):
-            d = d.lstrip(".").lower()
+            d = d.lstrip("*.").lower()
             if hote == d or hote.endswith("." + d):
                 return nom
     return None

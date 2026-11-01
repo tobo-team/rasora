@@ -74,10 +74,16 @@ def lire(profil, domaines):
         return memo[0]
 
     con = sqlite3.connect(f"file:{copie}?mode=ro", uri=True)
-    ou = " OR ".join("host_key = ? OR host_key = ?" for _ in domaines)
-    params = []
+    # "*.foo.com" = foo.com and every subdomain, for sites without a recipe.
+    conditions, params = [], []
     for d in domaines:
-        params += [d, d.lstrip(".")]
+        if d.startswith("*."):
+            conditions.append("host_key = ? OR host_key LIKE ?")
+            params += [d[2:], "%." + d[2:]]
+        else:
+            conditions.append("host_key = ? OR host_key = ?")
+            params += [d, d.lstrip(".")]
+    ou = " OR ".join(conditions)
     lignes = con.execute(
         "SELECT host_key,name,encrypted_value,path,expires_utc,is_secure,"
         "is_httponly,samesite FROM cookies WHERE " + ou, params

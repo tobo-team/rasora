@@ -2,10 +2,12 @@
 """Decide which sites the agent may use. Nothing is allowed by default.
 
   configurer-sessions.py list            sites found in Chrome, and which are allowed
-  configurer-sessions.py allow a b       allow sites
-  configurer-sessions.py allow --all     allow every site found
+  configurer-sessions.py allow a b       allow sites, by name or domain (foo.com)
+  configurer-sessions.py allow --all     everywhere: every site you are signed in to
   configurer-sessions.py deny a b        forbid sites and delete their cookies from the bot
-  configurer-sessions.py ask             ask site by site (used by the installer)
+  configurer-sessions.py deny --all      back to nothing allowed
+  configurer-sessions.py ask             ask once, then site by site if needed
+  configurer-sessions.py ensure <url>    in "everywhere" mode, add this site on first visit
 
 `list` only counts cookies per profile. It never decrypts anything. Cookies are
 decrypted later, for allowed sites only, by cookies-vers-bot.py.
@@ -13,6 +15,7 @@ decrypted later, for allowed sites only, by cookies-vers-bot.py.
 import json
 import os
 import sys
+import urllib.parse
 
 ICI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ICI)
@@ -20,6 +23,7 @@ from sessions import profils_candidats, oublier, bot_vivant  # noqa: E402
 
 CHROME = os.path.expanduser("~/Library/Application Support/Google/Chrome")
 TABLE = os.path.join(ICI, "sessions.json")
+PARTOUT = os.path.join(os.path.dirname(ICI), "allow-all")
 
 # `signe` empty = decide from the redirect to the login page. "@" = the Google
 # address of the profile.
@@ -100,6 +104,25 @@ def trouves():
     return table
 
 
+def domaine(texte):
+    """foo.com from a URL or a host. Two labels: good enough, not a public-suffix list."""
+    texte = texte.strip().lower()
+    hote = urllib.parse.urlparse(texte).netloc if "://" in texte else texte
+    morceaux = hote.split("/")[0].split(":")[0].split(".")
+    return ".".join(morceaux[-2:]) if len(morceaux) >= 2 else ""
+
+
+def entree_libre(site):
+    """A table entry for any domain with cookies in Chrome, or None."""
+    domaines = ["*." + site]
+    candidats = profils_candidats(domaines, limite=1)
+    if not candidats:
+        return None
+    profil = candidats[0]
+    return {"profil": profil, "compte": comptes().get(profil, profil), "domaines": domaines,
+            "sonde": f"https://{site}/", "signe": "", "lazy": True}
+
+
 def lire_table():
     if os.path.exists(TABLE):
         try:
@@ -128,12 +151,23 @@ def lister():
 def permettre(noms):
     vus, table = trouves(), lire_table()
     if noms == ["--all"]:
+        open(PARTOUT, "w").close()
+        print("  everywhere: any site you are signed in to in Chrome is added on first visit")
         noms = sorted(vus)
     for nom in noms:
         if nom in table:
             print(f"  {nom}: already allowed")
+        elif nom not in RECETTES and "." in nom:
+            site = domaine(nom)
+            c = entree_libre(site) if site else None
+            if c:
+                table[site] = c
+                print(f"  {site}: allowed ({c['compte']})")
+            else:
+                print(f"  {nom}: not signed in in Chrome, sign in once there first")
         elif nom not in RECETTES:
-            print(f"  {nom}: unknown site. Supported: {', '.join(sorted(RECETTES))}")
+            print(f"  {nom}: unknown site. Use a domain like foo.com, or one of: "
+                  f"{', '.join(sorted(RECETTES))}")
         elif nom not in vus:
             print(f"  {nom}: not signed in in Chrome, sign in once there first")
         else:
@@ -144,6 +178,10 @@ def permettre(noms):
 
 def interdire(noms):
     table = lire_table()
+    if noms == ["--all"]:
+        if os.path.exists(PARTOUT):
+            os.remove(PARTOUT)
+        noms = sorted(table)
     for nom in noms:
         conf = table.pop(nom, None)
         if conf is None:
@@ -157,8 +195,26 @@ def interdire(noms):
     ecrire_table(table)
 
 
+def assurer_url(url):
+    """Everywhere mode: first visit to a site adds it. Prints its name if added."""
+    if not os.path.exists(PARTOUT):
+        return
+    site, table = domaine(url), lire_table()
+    if not site:
+        return
+    couvert = any(site == d.lstrip("*.") or site.endswith("." + d.lstrip("*."))
+                  for c in table.values() for d in c["domaines"])
+    if couvert:
+        return
+    c = entree_libre(site)
+    if c:
+        table[site] = c
+        ecrire_table(table)
+        print(site)
+
+
 def demander():
-    """One question per site, default no."""
+    """One question for everything, then one per site. Default no."""
     vus = trouves()
     if not vus:
         print("  no supported site found in your Chrome")
@@ -168,7 +224,13 @@ def demander():
     except OSError:
         print("  no terminal to ask in. Later, run: neverlogout allow <site>")
         return
-    print("  Allow the agent to use these accounts? Default is no.\n")
+    print("  Let the agent use every account you are signed in to in Chrome? It can then")
+    print(f"  act on any site as you. Found: {', '.join(vus)}, and more on first visit.")
+    print("  [y/N] ", end="", flush=True)
+    if tty.readline().strip().lower() in ("y", "yes"):
+        permettre(["--all"])
+        return
+    print("\n  Then choose site by site. Default is no.\n")
     choix = []
     for nom, c in vus.items():
         print(f"  {nom} ({c['compte']}) [y/N] ", end="", flush=True)
@@ -191,6 +253,8 @@ def main():
         interdire(noms)
     elif action == "ask":
         demander()
+    elif action == "ensure" and noms:
+        assurer_url(noms[0])
     else:
         sys.exit(__doc__)
 

@@ -8,10 +8,15 @@ from. If you are not comfortable with this, don't install it.
 - **It decrypts Chrome cookies.** For allowed sites, it asks macOS Keychain for Chrome's key,
   decrypts those cookies and copies them into a separate Chrome profile. Infostealers use
   the same mechanism. The difference is that this code is open, runs locally, and only
-  touches the sites you allowed. Read `scripts/cookies-vers-bot.py`.
+  touches what you allowed. In "everywhere" mode, that means any site, on first visit.
+  Read `scripts/cookies-vers-bot.py`.
 - **It keeps live sessions on disk**, in `~/.neverlogout/chrome-profile`. The folder is
   readable only by your macOS user.
 - **It opens a Chrome debug port** on `127.0.0.1`.
+- **It can run JavaScript in a page**, so an agent can reach what clicking can't.
+- **It writes memory in plain files**, in `~/.neverlogout/memory`. It is told not to store
+  secrets there, but check what is in it.
+- **`do` runs Claude Code in the background**, allowed to run the `neverlogout` command.
 - **It never sends anything anywhere.** There is no server, no telemetry and no account.
   Your agent may send page content to its own model provider, as it does with any tool.
 
@@ -27,7 +32,8 @@ from. If you are not comfortable with this, don't install it.
 
 ## Good habits
 
-- Allow as few sites as you can. Banking and email deserve extra thought.
+- "Everywhere" is convenient and risky. Banking and email deserve extra thought: consider
+  site by site, or a separate Chrome profile.
 - Run `neverlogout deny <site>` when you are done with a site.
 - Run `neverlogout wipe` to remove everything, cookies included.
 

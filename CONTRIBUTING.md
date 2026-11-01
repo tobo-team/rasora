@@ -12,8 +12,9 @@ Thanks for helping.
 ## Rules
 
 - No telemetry, and nothing that sends data off the machine.
-- Nothing is copied for a site the user has not allowed.
+- Nothing is copied unless the user allowed it.
 - Don't add anything that bypasses 2FA, CAPTCHAs or a site's security.
+- No fake identities or bulk account creation.
 - Never paste real cookies, tokens or account details in an issue.
 
 ## Note on the code

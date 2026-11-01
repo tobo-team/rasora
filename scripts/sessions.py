@@ -272,9 +272,12 @@ def profils_candidats(domaines, limite=4):
     import shutil
     import sqlite3
     import tempfile
-    racines = {d.lstrip(".").split(".")[-2] for d in domaines if d.count(".") >= 1}
+    racines = {d.lstrip("*.").lower() for d in domaines if "." in d.lstrip("*.")}
     if not racines:
         return []
+    # exact domain or subdomain: a loose LIKE '%x%' matched every host with an x in it
+    ou = " OR ".join("host_key = ? OR host_key = ? OR host_key LIKE ?" for _ in racines)
+    valeurs = [v for r in sorted(racines) for v in (r, "." + r, "%." + r)]
     scores = []
     for prof in sorted(os.listdir(CHROME)):
         src = os.path.join(CHROME, prof, "Cookies")
@@ -288,9 +291,7 @@ def profils_candidats(domaines, limite=4):
                 if os.path.exists(src + suffixe):
                     shutil.copy2(src + suffixe, copie + suffixe)
             con = sqlite3.connect(f"file:{copie}?mode=ro", uri=True)
-            ou = " OR ".join("host_key LIKE ?" for _ in racines)
-            n = con.execute("SELECT count(*) FROM cookies WHERE " + ou,
-                            ["%" + r + "%" for r in racines]).fetchone()[0]
+            n = con.execute("SELECT count(*) FROM cookies WHERE " + ou, valeurs).fetchone()[0]
             con.close()
             if n:
                 scores.append((n, prof))
@@ -314,7 +315,7 @@ def oublier(domaines):
         if r.get("id") == 1:
             break
     ws.close()
-    racines = {d.lstrip(".") for d in domaines}
+    racines = {d.lstrip("*.") for d in domaines}
 
     def vise(hote):
         hote = hote.lstrip(".")
@@ -351,7 +352,21 @@ def main():
         sys.exit(1)
 
     conf_all = table()
-    cibles = {k: v for k, v in conf_all.items() if not noms or k in noms}
+    if action == "greffer":
+        # First visit to a site: copy now. A probe would see a public page, call the
+        # session alive and copy nothing.
+        for nom in noms:
+            if nom in conf_all:
+                print(f"  {nom}: {greffer(conf_all[nom]['profil'], conf_all[nom])[1]}")
+        return
+
+    # A site added on first visit is not probed every 20 minutes: it heals itself
+    # the next time a page lands on its login screen. Tests stay cheap that way.
+    cibles = {k: v for k, v in conf_all.items()
+              if k in noms or (not noms and not v.get("lazy"))}
+    if not cibles and not noms:
+        print("  nothing to check")
+        return
     if not cibles:
         sys.exit(f"unknown session. Known: {', '.join(conf_all)}")
 

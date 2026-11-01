@@ -5,8 +5,8 @@
 #   less install.sh
 #   bash install.sh
 #
-# No site is allowed unless you say yes.
-#   NEVERLOGOUT_SITES=github,gmail    allow these sites without asking
+# Nothing is allowed unless you say yes.
+#   NEVERLOGOUT_SITES=github,gmail    allow these sites without asking (all = everywhere)
 #   NEVERLOGOUT_NO_LAUNCHD=1          do not install the background guardians
 
 set -uo pipefail
@@ -89,8 +89,9 @@ ok "separate Chrome running on port $PORT, hidden"
 # 7. Your choice of sites -------------------------------------------------------
 echo
 if [ -n "${NEVERLOGOUT_SITES:-}" ]; then
+  S="${NEVERLOGOUT_SITES//,/ }"; [ "$S" = "all" ] && S="--all"
   # shellcheck disable=SC2086
-  "$VENV/bin/python" "$DEST/configurer-sessions.py" allow ${NEVERLOGOUT_SITES//,/ }
+  "$VENV/bin/python" "$DEST/configurer-sessions.py" allow $S
 else
   "$VENV/bin/python" "$DEST/configurer-sessions.py" ask
 fi
@@ -149,6 +150,7 @@ cat <<FIN
 
   Check it:        $DEST/neverlogout sessions
   Allow a site:    $DEST/neverlogout allow github
+  Give it a task:  $DEST/neverlogout do "open my GitHub notifications and summarize them"
   Other agents:    $DEST/neverlogout mcp
   Remove it all:   $DEST/neverlogout wipe
 

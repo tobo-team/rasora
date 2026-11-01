@@ -11,8 +11,9 @@ neverlogout: your AI agent never gets logged out.
 
 Sites
   neverlogout sites              sites found in Chrome, and which are allowed
-  neverlogout allow <site...>    let the agent use a site (--all for every site)
-  neverlogout deny <site...>     forbid a site and delete its cookies from the bot
+  neverlogout allow <site...>    allow a site or a domain (foo.com)
+  neverlogout allow --all        everywhere: every site you are signed in to
+  neverlogout deny <site...>     forbid a site and delete its cookies (--all for all)
   neverlogout repair             test allowed sessions, repair the dead ones
   neverlogout sessions           show which sessions are alive
 
@@ -28,6 +29,15 @@ Browser
   neverlogout press <tab> <Enter|Escape|Tab>
   neverlogout wait <tab> <text> [seconds]
   neverlogout screenshot <tab> <name>
+
+Work in the background
+  neverlogout do "<task>"        run a task with your Claude Code subscription
+  neverlogout jobs               list tasks
+  neverlogout job <id>           show what a task did
+
+Memory
+  neverlogout remember <site|general> <text>
+  neverlogout recall <words...>
 
 For other agents
   neverlogout mcp                run the MCP server on stdio
@@ -63,6 +73,31 @@ effacer() {
   echo "neverlogout is gone. Your own Chrome was not touched."
 }
 
+lancer() { # the task, run by the user's own Claude Code
+  command -v claude >/dev/null || { echo "Claude Code not found. Install it, or use: neverlogout mcp" >&2; exit 1; }
+  [ $# -gt 0 ] || { echo 'usage: neverlogout do "<task>"' >&2; exit 1; }
+  local id; id="$(date +%m%d-%H%M%S)"
+  mkdir -p "$HOME/.neverlogout/jobs"
+  local log="$HOME/.neverlogout/jobs/$id.log"
+  echo "$*" > "$HOME/.neverlogout/jobs/$id.task"
+  local m=(); [ -n "${NEVERLOGOUT_MODEL:-}" ] && m=(--model "$NEVERLOGOUT_MODEL")
+  ( cd "$HOME" && PATH="$BIN:$PATH" nohup claude -p "Use the neverlogout skill. Task: $*" \
+      "${m[@]+"${m[@]}"}" --allowedTools "Bash(neverlogout:*)" >"$log" 2>&1 </dev/null
+    echo "[finished]" >>"$log" ) &
+  disown
+  echo "started $id"
+  echo "follow it with: neverlogout job $id"
+}
+
+taches() {
+  for f in "$HOME"/.neverlogout/jobs/*.task; do
+    [ -e "$f" ] || { echo "no task yet"; return; }
+    local id; id="$(basename "$f" .task)"
+    local etat=running; tail -1 "${f%.task}.log" 2>/dev/null | grep -q '^\[finished\]$' && etat=done
+    printf "%s  %-8s %s\n" "$id" "$etat" "$(head -c 70 "$f")"
+  done
+}
+
 c="${1:-help}"
 [ $# -gt 0 ] && shift
 case "$c" in
@@ -75,6 +110,18 @@ case "$c" in
   repair)  assure; "$PY" "$BIN/sessions.py" reparer ;;
   sessions) assure; "$PY" "$BIN/sessions.py" etat ;;
   mcp)     exec "$PY" "$BIN/mcp_server.py" ;;
+  do)      assure; lancer "$@" ;;
+  jobs)    taches ;;
+  job)     cat "$HOME/.neverlogout/jobs/${1:?usage: neverlogout job <id>}.log" ;;
+  remember) "$PY" "$BIN/memoire.py" save "$@" ;;
+  recall)  "$PY" "$BIN/memoire.py" search "$@" ;;
+  open|ouvrir)
+    assure
+    ajoute="$("$PY" "$BIN/configurer-sessions.py" ensure "${1:-}" 2>/dev/null)"
+    [ -z "$ajoute" ] || "$PY" "$BIN/sessions.py" greffer "$ajoute" 2>&1 | tail -1
+    "$PY" "$BIN/nav.py" open "$@"; rc=$?
+    "$PY" "$BIN/memoire.py" show "${1:-general}"
+    exit $rc ;;
   wipe)    effacer "$@" ;;
   *)       assure; exec "$PY" "$BIN/nav.py" "$c" "$@" ;;
 esac
