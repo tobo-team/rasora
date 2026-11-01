@@ -1,76 +1,79 @@
-# Rasora
+<p align="center">
+  <img src="assets/banner.svg" alt="Rasora: hands and a memory for Claude" width="100%">
+</p>
 
-**Hands and a memory for Claude. Install it, then forget it.**
+<p align="center">
+  <a href="https://github.com/vocalyagent/rasora/actions/workflows/ci.yml"><img src="https://github.com/vocalyagent/rasora/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/macOS-Chrome-lightgrey" alt="macOS and Chrome">
+  <img src="https://img.shields.io/badge/telemetry-none-brightgreen" alt="No telemetry">
+</p>
 
-You keep talking to Claude the way you always do. It just gets things done: it works on any
-site where you are signed in, remembers what matters from one session to the next, and
-tries another way when something fails. All of it in the background, on your Mac, with the
-Claude subscription you already have.
-
-Built by Camille and Micka, with Claude Code. Camille can't code.
-
-> Demo video: coming soon.
+You keep talking to Claude the way you always do. It just gets more done: it finds things on
+the web, works on sites where you are signed in, remembers what matters from one session to
+the next, and tries another way when something fails. All in the background, on your Mac,
+with the Claude subscription you already have.
 
 ## Install
 
 Inside Claude Code:
 
 ```
-/plugin install rasora --marketplace vocalyagent/rasora
-```
-
-That's it. There is no command to learn and nothing to mention. The first time a task needs
-one of your accounts, Claude asks you once, in one sentence. macOS asks once for Keychain
-access: click Always Allow. After that it stays out of your way.
-
-Older Claude Code:
-
-```
 /plugin marketplace add vocalyagent/rasora
 /plugin install rasora@rasora
 ```
 
-macOS and Google Chrome required.
+That's it. There is no command to learn and nothing to mention. The first time a task needs
+one of your accounts, Claude asks you once, in one sentence.
 
 ## What changes
 
-- **It acts on the web.** Claude uses a hidden Chrome of its own, signed in to your accounts,
-  on sites with no API. Your screen and tabs stay yours.
-- **It never gets logged out.** Dead sessions repair themselves from your everyday Chrome.
-- **It remembers.** Your preferences, your projects, what worked on each site, in plain
-  Markdown files you can read and edit in `~/.rasora/memory`.
-- **It finds another way.** Visible text, iframes, keyboard, direct URLs, screenshots,
-  JavaScript, then a different method altogether.
-- **It costs less to run.** It reads text rather than screenshots. There is no server or
-  extra model: only your own Claude subscription.
+| | |
+|---|---|
+| **Works on the web** | Search and reading first, a hidden Chrome only when a site needs it. Your screen and tabs stay yours. |
+| **Stays signed in** | Dead sessions repair themselves from your everyday Chrome. |
+| **Remembers** | Your preferences, your projects, what worked on each site, in Markdown files you can read. |
+| **Finds another way** | Visible text, iframes, keyboard, direct links, screenshots, then a different method altogether. |
+| **Costs less** | Text rather than screenshots, Chrome last. No extra model. |
 
-It asks before a payment, a publish button, a deletion or a message to a person, unless
-your request says to do exactly that. A 2FA prompt or a CAPTCHA stays yours.
+## Built to be safe
 
-## If you want to look under the hood
+An agent that acts with your accounts can be tricked by a web page, so safety doesn't rely
+on the model behaving:
+
+- **A guard outside the model** stops before payments, publishing, deleting and messages,
+  and asks you. Page text can't talk it out of it.
+- **Money and identity stay out.** Banks, payment, crypto, password managers and government
+  sites are excluded unless you add one yourself.
+- **Your secrets stay out of reach.** No reading cookies, no local addresses.
+- **No server of ours.** No account, no telemetry. Your sessions and memory stay on your Mac.
+- **Stop at any time.** `rasora pause` freezes it, `rasora wipe` removes everything.
+
+No agent is immune to prompt injection. Read [SECURITY.md](SECURITY.md) to see exactly what
+Rasora does and doesn't protect you from.
+
+## Under the hood
+
+You never need these, but you can look:
 
 ```bash
 rasora sites             # what is allowed
 rasora allow foo.com     # allow one site
 rasora deny foo.com      # forbid it and delete its cookies from the bot
-rasora deny --all        # back to nothing
 rasora recall stripe     # search the memory
 rasora do "<task>"       # run a task in the background
+rasora pause             # freeze everything
 rasora wipe              # delete everything
 ```
 
-## Other MCP clients
+Other MCP clients: run [install.sh](install.sh) after reading it, then use
+`~/.rasora/bin/rasora mcp`. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-Run [install.sh](install.sh) after reading it, then add this server:
+## Who made this
 
-```json
-{ "mcpServers": { "rasora": { "command": "/Users/YOU/.rasora/bin/rasora", "args": ["mcp"] } } }
-```
+Camille and Micka, with Claude Code. Camille can't code. Rasora began as the setup that
+runs a real online store.
 
-## Security
+## Contributing
 
-Rasora acts with your accounts. Read [SECURITY.md](SECURITY.md) before installing.
-
-## License
-
-MIT.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Licensed under [MIT](LICENSE).

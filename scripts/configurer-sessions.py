@@ -20,6 +20,7 @@ import urllib.parse
 ICI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ICI)
 from sessions import profils_candidats, oublier, bot_vivant  # noqa: E402
+from sensibles import sensible  # noqa: E402
 
 CHROME = os.path.expanduser("~/Library/Application Support/Google/Chrome")
 TABLE = os.path.join(ICI, "sessions.json")
@@ -152,7 +153,8 @@ def permettre(noms):
     vus, table = trouves(), lire_table()
     if noms == ["--all"]:
         open(PARTOUT, "w").close()
-        print("  everywhere: any site you are signed in to in Chrome is added on first visit")
+        print("  everywhere: sites you are signed in to are added on first visit.")
+        print("  Banks, payment, crypto, password managers and government sites stay out.")
         noms = sorted(vus)
     for nom in noms:
         if nom in table:
@@ -163,6 +165,9 @@ def permettre(noms):
             if c:
                 table[site] = c
                 print(f"  {site}: allowed ({c['compte']})")
+                if sensible(site):
+                    print("  warning: this site holds money or identity. "
+                          "An agent can be tricked: deny it when you are done.")
             else:
                 print(f"  {nom}: not signed in in Chrome, sign in once there first")
         elif nom not in RECETTES:
@@ -200,7 +205,7 @@ def assurer_url(url):
     if not os.path.exists(PARTOUT):
         return
     site, table = domaine(url), lire_table()
-    if not site:
+    if not site or sensible(url):
         return
     couvert = any(site == d.lstrip("*.") or site.endswith("." + d.lstrip("*."))
                   for c in table.values() for d in c["domaines"])

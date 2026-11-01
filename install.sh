@@ -45,7 +45,7 @@ else
   "$PY" "$DEST/configurer-sessions.py" ask
 fi
 if [ -s "$DEST/sessions.json" ] && [ "$(cat "$DEST/sessions.json")" != "{}" ]; then
-  echo "Copying sessions. macOS will ask for Keychain access once: click Always Allow."
+  echo "Copying sessions. macOS will ask for Keychain access once: click Allow, not Always Allow."
   "$PY" "$DEST/sessions.py" reparer 2>&1 | sed 's/^/  /'
 fi
 

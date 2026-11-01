@@ -1,0 +1,20 @@
+name: Bug report
+description: Something doesn't work
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+  - type: input
+    id: versions
+    attributes:
+      label: macOS, Chrome and Claude Code versions
+  - type: markdown
+    attributes:
+      value: Never paste cookies, tokens or account details. For a security problem, use private reporting instead.

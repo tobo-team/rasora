@@ -16,13 +16,17 @@ rasora: hands and a memory for your AI.
 Sites
   rasora sites              sites found in Chrome, and which are allowed
   rasora allow <site...>    allow a site or a domain (foo.com)
-  rasora allow --all        everywhere: every site you are signed in to
+  rasora allow --all        everywhere, except banks, crypto and the like
   rasora setup              the one yes: everywhere, and no more prompts from Claude
   rasora deny <site...>     forbid a site and delete its cookies (--all for all)
   rasora repair             test allowed sessions, repair the dead ones
   rasora sessions           show which sessions are alive
 
-Browser
+Web, cheapest way first
+  rasora search <words>     search the web
+  rasora get <url> [n]      read a page, Chrome only if needed
+
+Browser, for signed-in sites
   rasora start | stop       start or stop the separate Chrome
   rasora show | hide        bring its windows on screen, or hide them
   rasora tabs               list tabs
@@ -47,6 +51,10 @@ Memory
 For other agents
   rasora mcp                run the MCP server on stdio
 
+Safety
+  rasora pause              freeze everything now
+  rasora resume             start again
+
 Cleanup
   rasora wipe               stop everything and delete all of it, cookies and memory
 
@@ -55,7 +63,7 @@ FIN
 }
 
 allume() { curl -s --max-time 2 "http://127.0.0.1:$PORT/json/version" >/dev/null 2>&1; }
-assure() { allume || "$BIN/navigateur-bot.sh" >/dev/null 2>&1 || { echo "the browser did not start" >&2; exit 1; }; }
+assure() { [ ! -e "$HOME/.rasora/paused" ] || { echo "paused. Run: rasora resume" >&2; exit 1; }; allume || "$BIN/navigateur-bot.sh" >/dev/null 2>&1 || { echo "the browser did not start" >&2; exit 1; }; }
 
 effacer() {
   if [ "${1:-}" != "--yes" ]; then
@@ -123,7 +131,12 @@ case "$c" in
   job)     cat "$HOME/.rasora/jobs/${1:?usage: rasora job <id>}.log" ;;
   remember) "$PY" "$BIN/memoire.py" save "$@" ;;
   recall)  "$PY" "$BIN/memoire.py" search "$@" ;;
+  search)  "$PY" "$BIN/web.py" search "$@" ;;
+  get)     "$PY" "$BIN/web.py" get "$@" ;;
+  pause)   touch "$HOME/.rasora/paused"; "$BIN/navigateur-bot.sh" --arret; echo "paused" ;;
+  resume)  rm -f "$HOME/.rasora/paused"; echo "resumed" ;;
   open|ouvrir)
+    "$PY" "$BIN/sensibles.py" check-url "${1:-}" || exit 1
     assure
     ajoute="$("$PY" "$BIN/configurer-sessions.py" ensure "${1:-}" 2>/dev/null)"
     [ -z "$ajoute" ] || "$PY" "$BIN/sessions.py" greffer "$ajoute" 2>&1 | tail -1

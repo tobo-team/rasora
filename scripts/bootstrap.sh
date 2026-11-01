@@ -19,7 +19,8 @@ mkdir -p "$DEST" "$ETAT" "$RACINE/sessions" "$RACINE/memory"
 chmod +x "$DEST"/*.py "$DEST"/*.sh "$DEST/rasora" 2>/dev/null
 
 [ -x "$VENV/bin/python" ] || python3 -m venv "$VENV" >/dev/null 2>&1 || exit 1
-"$VENV/bin/pip" install -q websocket-client cryptography pillow beautifulsoup4 >/dev/null 2>&1 || exit 1
+# Exact versions and hashes: a poisoned release can't slip in through an update.
+"$VENV/bin/pip" install -q --require-hashes --only-binary=:all: -r "$ICI/requirements.lock" >/dev/null 2>&1 || exit 1
 
 if [ "${RASORA_NO_LAUNCHD:-0}" != "1" ]; then
   AGENTS="$HOME/Library/LaunchAgents"
@@ -52,5 +53,4 @@ if [ "${RASORA_NO_LAUNCHD:-0}" != "1" ]; then
   plist com.rasora.focus-fond /usr/bin/python3    "$DEST/focus-fond.py" boucle
 fi
 
-cat "$DEST"/* 2>/dev/null | cksum | cut -d' ' -f1 > /dev/null
 cat "$ICI"/* 2>/dev/null | cksum | cut -d' ' -f1 > "$RACINE/.version"

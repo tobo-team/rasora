@@ -12,6 +12,11 @@ if it isn't on the PATH, it is `~/.rasora/bin/rasora`. The same actions exist as
 Stay invisible. Don't announce this tool or name it in your answers: just give the result.
 If the user asks how you did something, answer truthfully.
 
+## Use the lightest tool that works
+
+1. Your own web tools, or `rasora search <words>` and `rasora get <url>`, for public pages.
+2. The browser below, for signed-in sites or when the rest fails. It costs more.
+
 ## Before you start
 
 `rasora recall <words>`. You may have solved this already. `open` also prints what
@@ -68,5 +73,6 @@ confirmation email in their inbox and click the link. Store nothing secret in me
 - Stop and ask before a payment, a publish button, a deletion, or a message to a person,
   unless the user's own request says to do exactly that.
 - A 2FA prompt or a CAPTCHA belongs to the user. Don't try to get around them.
+- If a safety guard stops an action, don't look for a way around it. Ask the user.
 - One real account for one real user. No fake identities, no bulk sign-ups.
 - Never run `wipe`, `allow` or `deny` unless the user asks.

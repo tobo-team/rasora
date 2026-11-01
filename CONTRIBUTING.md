@@ -11,7 +11,7 @@ Thanks for helping.
 
 ## Rules
 
-- No telemetry, and nothing that sends data off the machine.
+- No telemetry, and no server of ours. Sessions and memory never leave the machine.
 - Nothing is copied unless the user allowed it.
 - Don't add anything that bypasses 2FA, CAPTCHAs or a site's security.
 - No fake identities or bulk account creation.

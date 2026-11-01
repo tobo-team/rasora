@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 420" width="1280" height="420" role="img" aria-label="Rasora: hands and a memory for Claude">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#14101f"/><stop offset="1" stop-color="#0b0d14"/></linearGradient>
+    <radialGradient id="soleil" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ffb37a"/><stop offset=".45" stop-color="#ff6f61"/><stop offset=".8" stop-color="#8e5cf7" stop-opacity=".55"/><stop offset="1" stop-color="#8e5cf7" stop-opacity="0"/></radialGradient>
+    <linearGradient id="mot" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#ffc9a3"/></linearGradient>
+    <style>
+      .halo{transform-origin:1000px 210px;animation:r 7s ease-in-out infinite}
+      .a1{transform-origin:1000px 210px;animation:t 16s linear infinite}
+      .a2{transform-origin:1000px 210px;animation:t 26s linear infinite reverse}
+      @keyframes r{50%{transform:scale(1.07)}}
+      @keyframes t{to{transform:rotate(360deg)}}
+    </style>
+  </defs>
+  <rect width="1280" height="420" rx="24" fill="url(#bg)"/>
+  <circle class="halo" cx="1000" cy="210" r="190" fill="url(#soleil)"/>
+  <circle cx="1000" cy="210" r="52" fill="#fff4ea"/>
+  <g class="a1" fill="none"><circle cx="1000" cy="210" r="118" stroke="#ffffff" stroke-opacity=".22"/><circle cx="1118" cy="210" r="8" fill="#fff"/></g>
+  <g class="a2" fill="none"><circle cx="1000" cy="210" r="164" stroke="#ffffff" stroke-opacity=".14"/><circle cx="836" cy="210" r="6" fill="#ffc9a3"/></g>
+  <text x="84" y="214" font-family="-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif" font-size="118" font-weight="700" letter-spacing="-3" fill="url(#mot)">Rasora</text>
+  <text x="88" y="276" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif" font-size="32" fill="#c9c6d6">Hands and a memory for Claude.</text>
+  <text x="88" y="320" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif" font-size="24" fill="#8b8798">Install it, then forget it.</text>
+</svg>

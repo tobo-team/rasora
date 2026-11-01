@@ -29,14 +29,24 @@ import urllib.request
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 PORT = int(os.environ.get("CDP_PORT", "9333"))
+CACHE = os.path.expanduser("~/.rasora/.chrome-key")
 CHROME = os.path.expanduser("~/Library/Application Support/Google/Chrome")
 
 
 def cle():
+    """Chrome's key, asked once. "Always Allow" on the Keychain prompt would hand it to
+    every program that calls `security`, for good. A single "Allow" plus this private
+    file means only this tool keeps it, and `rasora wipe` destroys it."""
+    if os.path.exists(CACHE):
+        return bytes.fromhex(open(CACHE).read().strip())
     mdp = subprocess.check_output(
         ["security", "find-generic-password", "-w", "-s", "Chrome Safe Storage"]
     ).strip()
-    return hashlib.pbkdf2_hmac("sha1", mdp, b"saltysalt", 1003, 16)
+    k = hashlib.pbkdf2_hmac("sha1", mdp, b"saltysalt", 1003, 16)
+    fd = os.open(CACHE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write(k.hex())
+    return k
 
 
 def dechiffrer(blob, cle_de):
