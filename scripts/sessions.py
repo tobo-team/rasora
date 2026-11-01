@@ -277,6 +277,7 @@ def main():
         print("  no site yet. Run: rasora login <url>")
         return
     onglet = Onglet()
+    sortis = []
     try:
         for nom, conf in cibles.items():
             try:
@@ -285,8 +286,14 @@ def main():
                 ok, comment = False, f"probe failed ({type(e).__name__})"
             suffixe = f"  [{comment}]" if comment else ""
             print(f"  {nom:18} {'SIGNED IN' if ok else 'SIGNED OUT'}{suffixe}")
+            if not ok:
+                sortis.append(nom)
     finally:
         onglet.fermer()
+    if not noms:                         # read by the next session, at no cost
+        chemin = os.path.expanduser("~/.rasora/state/sortis.txt")
+        with open(chemin, "w", encoding="utf-8") as f:
+            f.write("\n".join(sortis))
 
 
 if __name__ == "__main__":

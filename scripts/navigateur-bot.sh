@@ -41,6 +41,11 @@ case "${1:-}" in
     fi
     echo "off"; exit 1 ;;
   --arret)
+    # A clean exit first: it is what lets Chrome keep sign-ins that only last a session.
+    if vivant; then
+      "$HOME/.rasora/bin/.venv-cdp/bin/python" "$HOME/.rasora/bin/nav.py" eteindre >/dev/null 2>&1
+      for _ in 1 2 3 4 5 6; do vivant || break; sleep 1; done
+    fi
     # on ne tue que nos propres processus, jamais "Google Chrome" en general
     pids=$(mes_pids)
     if [ -n "$pids" ]; then echo "$pids" | xargs kill 2>/dev/null; echo "browser stopped"; fi
@@ -53,7 +58,20 @@ if ! vivant; then
   # nettoyage d'un reliquat a nous qui ne repondrait plus
   pids=$(mes_pids); [ -n "$pids" ] && { echo "$pids" | xargs kill 2>/dev/null; sleep 1; }
 
-  mkdir -p "$DOSSIER"
+  mkdir -p "$DOSSIER/Default"
+  # Keep sign-ins across restarts, and let this Chrome offer to save passwords, in its own
+  # profile, so signing in again is one click. Rasora never reads them.
+  python3 - "$DOSSIER/Default/Preferences" <<'PY' 2>/dev/null
+import json, sys
+try:
+    p = json.load(open(sys.argv[1]))
+except Exception:
+    p = {}
+p.setdefault("session", {})["restore_on_startup"] = 1
+p["credentials_enable_service"] = True
+p.setdefault("profile", {})["password_manager_enabled"] = True
+json.dump(p, open(sys.argv[1], "w"))
+PY
   # `open -g -j`: launched hidden and in the background. Starting the binary directly
   # takes the foreground, and macOS then drags the user to another desktop.
   open -g -j -n -a "${CHROME%/Contents/MacOS/*}" --args \

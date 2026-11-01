@@ -111,7 +111,7 @@ def main():
         rendre(avant)
     if not fini:
         sys.exit("no sign-in seen. Run this again when you are ready.")
-    subprocess.run([sys.executable, os.path.join(ICI, "configurer-sessions.py"), "add", fini])
+    subprocess.run([sys.executable, os.path.join(ICI, "configurer-sessions.py"), "add", fini, url])
 
 
 if __name__ == "__main__":

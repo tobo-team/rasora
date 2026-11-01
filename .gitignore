@@ -6,3 +6,5 @@ __pycache__/
 .venv-cdp/
 .omc/
 .DS_Store
+BOARD.md
+ETAT.md

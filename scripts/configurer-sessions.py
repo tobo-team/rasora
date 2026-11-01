@@ -2,7 +2,7 @@
 """The sites the user signed in to inside Rasora's own Chrome.
 
   configurer-sessions.py list            sites and accounts known to Rasora
-  configurer-sessions.py add <url>       remember a site after a sign-in
+  configurer-sessions.py add <url> [login-url]   remember a site after a sign-in
   configurer-sessions.py remove <site>   sign out: delete its cookies from Rasora's Chrome
 
 Rasora never reads the user's everyday Chrome. A session exists here only because the user
@@ -48,11 +48,12 @@ def main():
     if not a or a[0] == "list":
         t = lire()
         print("\n".join(f"  {n}" for n in sorted(t)) or "  no site yet. Run: rasora login <url>")
-    elif a[0] == "add" and len(a) == 2:
+    elif a[0] == "add" and len(a) in (2, 3):
         site = domaine(a[1])
         if site:
             t = lire()
-            t[site] = {"domaines": ["*." + site], "sonde": a[1], "signe": ""}
+            t[site] = {"domaines": ["*." + site], "sonde": a[1], "signe": "",
+                       "connexion": a[2] if len(a) == 3 else a[1]}
             ecrire(t)
             print(f"  {site}: signed in")
             if sensible(a[1]):

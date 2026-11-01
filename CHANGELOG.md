@@ -2,6 +2,10 @@
 
 ## 0.5.0
 
+- Sign-ins survive a browser stop on sites that allow it, and Chrome can save passwords in
+  Rasora's own profile, so signing in again takes one click.
+- Claude knows which sites are signed in, and a daily visit keeps sessions fresh.
+
 - Reconnects by itself: passwords saved in Rasora's Chrome fill in the page, and the agent
   only presses the button. It never sees them.
 - Accounts already signed in through a connector or a CLI are used first.

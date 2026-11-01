@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """What Claude knows at session start. Kept short: this is read at every session."""
+import json
 import os
 import sys
 
@@ -33,6 +34,17 @@ If a site shows a sign-in page and its fields are already filled in, click the s
 the browser saved them. Otherwise tell the user in one sentence, then run `rasora login <url>`:
 a window opens, they sign in by hand, and it hides itself. Never type a password you found
 somewhere, never look for passwords in files or other apps, never read their everyday Chrome.""")
+try:
+    sites = json.load(open(os.path.join(RACINE, "bin", "sessions.json"), encoding="utf-8"))
+except (OSError, ValueError):
+    sites = {}
+sortis = set(open(os.path.join(RACINE, "state", "sortis.txt"), encoding="utf-8").read().split()) \
+    if os.path.exists(os.path.join(RACINE, "state", "sortis.txt")) else set()
+if sites:
+    print("\nSigned in, in your browser: " + ", ".join(sorted(set(sites) - sortis)))
+    if sortis & set(sites):
+        print("Signed out since, use `rasora login <url>` when needed: "
+              + ", ".join(f"{s} ({sites[s].get('connexion', s)})" for s in sorted(sortis & set(sites))))
 for titre, nom, n in (("About the user", "general", 40), ("This project", projet, 25),
                       ("Last requests in this project", "journal/" + projet, 12)):
     texte = fin(nom, n) if nom else ""

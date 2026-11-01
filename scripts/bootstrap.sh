@@ -59,6 +59,8 @@ if [ "${RASORA_NO_LAUNCHD:-0}" != "1" ]; then
     launchctl load "$f" >/dev/null 2>&1
   }
   plist com.rasora.nav-gc   /usr/bin/python3    "$DEST/nav-gc.py"    300
+  # Once a day: a visit keeps sessions fresh, and tells Claude which ones ended.
+  plist com.rasora.sessions /bin/bash           "$DEST/rasora"       86400 sessions
   plist com.rasora.nav-fond "$VENV/bin/python"  "$DEST/nav-fond.py"  boucle
   # focus-fond needs PyObjC, which only the system python ships.
   plist com.rasora.focus-fond /usr/bin/python3    "$DEST/focus-fond.py" boucle

@@ -858,6 +858,18 @@ def main():
         urllib.request.urlopen(f"{BASE}/json/close/{tid}").read()
         return
 
+    if cmd == "eteindre":
+        # Empty tabs first: nothing to reload at the next start, only the sign-ins remain.
+        o = navigateur()
+        ts = onglets()
+        for t in ts[1:]:
+            o.call("Target.closeTarget", {"targetId": t["id"]})
+        if ts:
+            Onglet(ts[0]).call("Page.navigate", {"url": "about:blank"})
+            time.sleep(.3)
+        o.call("Browser.close")
+        return
+
     if cmd == "onglets":
         ts = onglets()
         j = journal_lire()
