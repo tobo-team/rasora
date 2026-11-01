@@ -12,24 +12,27 @@ import os
 import re
 import sys
 import time
-import urllib.parse
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from sensibles import hote_de, racine  # noqa: E402
 
 RACINE = os.path.expanduser("~/.rasora/memory")
 A_RETENIR = re.compile(r"retiens|souviens[- ]toi|garde (ca|ça|le|la) en t[eê]te|en t[eê]te pour|"
                        r"n'oublie pas|je pr[eé]f[eè]re|remember|keep in mind|i prefer|"
-                       r"from now on|[àa] partir de maintenant|toujours|jamais", re.I)
-SECRET = re.compile(r"(sk-[a-z0-9-]{12}|gh[pousr]_[a-z0-9]{12}|akia[0-9a-z]{12}|password|mot de passe|bearer )", re.I)
+                       r"from now on|[àa] partir de maintenant", re.I)
+SECRET = re.compile(r"sk[-_][a-z0-9_-]{12}|rk_live_|gh[pousr]_[a-z0-9]{12}|github_pat_|glpat-|"
+                    r"akia[0-9a-z]{12}|xox[abprs]-|aiza[0-9a-z_-]{20}|ya29\.|npm_[a-z0-9]{20}|"
+                    r"eyj[\w-]{8,}\.eyj|-----begin|password|mot de passe|\bmdp\b|bearer |"
+                    r"(api[_ -]?key|secret|token)\s*[:=]|\b(?:\d[ -]?){13,19}\b", re.I)
 
 
 def cle(nom):
     """A site name from a URL, a host or a word: https://app.foo.com/x -> foo.com"""
     nom = nom.strip().lower()
-    hote = urllib.parse.urlparse(nom).netloc if "://" in nom else nom
-    hote = hote.split("/")[0].split(":")[0]
-    morceaux = hote.split(".")
-    if len(morceaux) >= 2:
-        hote = ".".join(morceaux[-2:])
-    return re.sub(r"[^a-z0-9._-]", "-", hote) or "general"
+    if nom.startswith("project-"):
+        return re.sub(r"[^a-z0-9._-]", "-", nom)
+    hote = hote_de(nom) or ""
+    return re.sub(r"[^a-z0-9._-]", "-", racine(hote) or hote).strip(".") or "general"
 
 
 def chemin(nom):
@@ -37,6 +40,8 @@ def chemin(nom):
 
 
 def save(nom, texte):
+    if SECRET.search(texte):
+        sys.exit("not saved: this looks like a password or a key")
     os.makedirs(RACINE, mode=0o700, exist_ok=True)
     with open(chemin(nom), "a", encoding="utf-8") as f:
         f.write(f"- {time.strftime('%Y-%m-%d')}: {' '.join(texte.split())}\n")
@@ -44,7 +49,7 @@ def save(nom, texte):
 
 
 def journal(projet, texte):
-    """One line per user message. Things that look like keys are not written."""
+    """One line per user message. Things that look like keys or card numbers are not written."""
     if SECRET.search(texte):
         return
     dossier = os.path.join(RACINE, "journal")

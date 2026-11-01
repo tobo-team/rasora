@@ -24,7 +24,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Bash|Read|mcp__plugin_rasora_rasora__.*",
+        "matcher": "Bash|Read|Grep|Glob|Write|Edit|NotebookEdit|mcp__plugin_rasora_rasora__.*",
         "hooks": [
           {
             "type": "command",

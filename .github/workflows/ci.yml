@@ -19,11 +19,11 @@ jobs:
         run: python -m compileall -q scripts tests
       - name: Shell syntax
         run: for f in scripts/*.sh scripts/rasora bin/rasora install.sh; do bash -n "$f"; done
-      - name: Tests
-        run: python -m unittest discover -s tests
       - name: Locked dependencies install
         run: |
           python -m pip install --require-hashes --only-binary=:all: -r scripts/requirements.lock
+      - name: Tests
+        run: python -m unittest discover -s tests
       # What a Mac has out of the box. This is the Python users run, not the one above.
       - name: Install and tests on the system Python
         run: |

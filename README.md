@@ -48,7 +48,8 @@ on the model behaving:
 - **You type your own passwords.** The agent never sees them.
 - **Sessions stay out of reach.** Pages can't read cookies, and local addresses are refused.
 - **No server of ours.** No account, no telemetry. Your sessions and memory stay on your Mac.
-- **Stop at any time.** `rasora pause` freezes it, `rasora wipe` removes everything.
+- **Stop at any time.** In a terminal, `~/.rasora/bin/rasora pause` freezes it, tasks included,
+  and `~/.rasora/bin/rasora wipe` removes everything.
 
 No agent is immune to prompt injection: a web page can hide instructions that try to steer
 Claude. So don't sign Rasora in to your bank or your main email. Read
@@ -56,7 +57,8 @@ Claude. So don't sign Rasora in to your bank or your main email. Read
 
 ## Under the hood
 
-You never need these, but you can look:
+You never need these, but you can look. In your own terminal, `rasora` is
+`~/.rasora/bin/rasora`:
 
 ```bash
 rasora sites             # sites you signed in to
@@ -69,7 +71,8 @@ rasora wipe              # delete everything
 ```
 
 Other MCP clients: run [install.sh](install.sh) after reading it, then use
-`~/.rasora/bin/rasora mcp`. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+`~/.rasora/bin/rasora mcp`. They can't ask you to confirm, so the guard refuses what Claude Code
+would ask about. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Who made this
 

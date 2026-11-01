@@ -9,6 +9,29 @@
   left. The last Pillow for Python 3.9 has known vulnerabilities.
 - CI runs the install and the tests on the system Python.
 
+Security audit, one test per hole in `tests/test_failles.py`:
+
+- Guard: a malformed URL, a very long command or `rasora login` written inside another command
+  could switch it off. It also missed `nav.py` called directly, masked commands, shell-built
+  values, and scripts that click or submit.
+- Guard: more languages and verb forms, and it now covers Grep, Glob and file edits, including
+  its own files. It no longer blocks the user's own servers on ports 9000 to 9332.
+- A second check in `nav.py` reads the real element: a piece of a label can't click "Buy now",
+  a piece of a name can't fill a password field, Enter can't press a payment button.
+- Local addresses: forms like `127.1`, `2130706433`, `http:/127.0.0.1` and redirects are refused,
+  in `rasora get` and in the browser. Only http and https open.
+- `--cadre` could reach an iframe in another tab.
+- Other MCP clients ran with no guard at all.
+- Every web text is now marked as untrusted, from the command line too, in tags a page can't close.
+- Screenshots moved from `/tmp`, readable by all, to a private folder, kept one day.
+- `logout` also deletes stored data: many apps keep their sign-in there.
+- `pause` and `wipe` also stop running tasks.
+- Memory: secrets are refused when saving too, more of them are recognised, and everyday sentences
+  with "toujours" or "jamais" are no longer saved as instructions.
+- Fixed: project memory was never read back from folders with capitals, sites under `.co.uk` and
+  the like shared one file and one logout, and signing in from a home page closed the window at once.
+- Removed `clic-cadre.py`, which nothing used.
+
 ## 0.5.0
 
 - Guard: every `rasora` call in a chained or nested command is checked, and the strictest

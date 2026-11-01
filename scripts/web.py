@@ -9,6 +9,7 @@ the page needs JavaScript or refuses plain requests. Standard library only.
 """
 import html
 import html.parser
+import http.client
 import json
 import os
 import re
@@ -61,12 +62,25 @@ def texte_de(contenu):
     return re.sub(r"\n\s*\n+", "\n", "".join(p.morceaux)).strip()
 
 
+class Redirection(urllib.request.HTTPRedirectHandler):
+    """Each hop is checked: a public page could otherwise send us to the browser's debug port."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not newurl.lower().startswith(("http://", "https://")) \
+                or adresse_privee(newurl, resoudre=True):
+            raise Sortie("a redirect led to a local address: refused")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+OUVREUR = urllib.request.build_opener(Redirection)
+
+
 def demander(url, donnees=None):
     if adresse_privee(url, resoudre=True):
         raise Sortie("local addresses are refused")
     req = urllib.request.Request(url, data=donnees, headers={"User-Agent": UA,
                                                              "Accept-Language": "en-US,en"})
-    with urllib.request.urlopen(req, timeout=20) as r:
+    with OUVREUR.open(req, timeout=20) as r:
         return r.read(3_000_000).decode(r.headers.get_content_charset() or "utf-8", "replace")
 
 
@@ -99,12 +113,14 @@ def github(url):
 
 def navigateur(url, n):
     cli = os.path.join(ICI, "rasora")
-    a = subprocess.run(["/bin/bash", cli, "open", url], capture_output=True, text=True, timeout=90)
+    env = dict(os.environ, RASORA_BRUT="1")      # marked once, by the outer command
+    a = subprocess.run(["/bin/bash", cli, "open", url], capture_output=True, text=True,
+                       timeout=90, env=env)
     if a.returncode:
         raise Sortie("the browser could not open it")
     tab = re.search(r"#[0-9a-f]{6}", a.stdout)
     r = subprocess.run(["/bin/bash", cli, "read", tab[0] if tab else url, str(n)],
-                       capture_output=True, text=True, timeout=60)
+                       capture_output=True, text=True, timeout=60, env=env)
     return r.stdout
 
 
@@ -124,7 +140,7 @@ def get(url, n=8000):
             return t[:n]
     except Sortie:
         raise
-    except (urllib.error.URLError, OSError, ValueError):
+    except (urllib.error.URLError, http.client.HTTPException, OSError, ValueError):
         pass
     return navigateur(url, n)
 

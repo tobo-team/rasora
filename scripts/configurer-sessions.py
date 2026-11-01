@@ -11,21 +11,17 @@ signed in by hand, in Rasora's own window.
 import json
 import os
 import sys
-import urllib.parse
 
 ICI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ICI)
 from sessions import oublier, bot_vivant  # noqa: E402
-from sensibles import sensible  # noqa: E402
+from sensibles import hote_de, racine, sensible  # noqa: E402
 
 TABLE = os.path.join(ICI, "sessions.json")
 
 
 def domaine(texte):
-    texte = texte.strip().lower()
-    hote = urllib.parse.urlparse(texte).netloc if "://" in texte else texte
-    morceaux = hote.split("/")[0].split(":")[0].split(".")
-    return ".".join(morceaux[-2:]) if len(morceaux) >= 2 else ""
+    return racine(hote_de(texte) or "")
 
 
 def lire():
@@ -64,7 +60,8 @@ def main():
         t.pop(site, None)
         ecrire(t)
         n = oublier(["*." + site]) if bot_vivant() else 0
-        print(f"  {site}: signed out, {n} cookies deleted")
+        print(f"  {site}: signed out, cookies ({n}) and stored data deleted. A password saved "
+              "in Rasora's Chrome stays there until `rasora wipe`.")
     else:
         sys.exit(__doc__)
 

@@ -204,7 +204,7 @@ class Onglet:
 
 # Une page de connexion n'est JAMAIS une session vivante, quel que soit le signe
 # cherche. Mesure le 23/08/2026 : la sonde PostHog `/activity/explore` redirigee
-# vers `/login?next=/project/250355/activity/explore` contenait le mot cherche
+# vers `/login?next=/project/123/activity/explore` contenait le mot cherche
 # DANS SON URL, et `texte()` colle l'URL a la fin du texte. La session etait donc
 # annoncee VIVANTE sur un ecran de connexion, et le tableau de bord rendait des
 # cases vides sans jamais dire pourquoi. On ecarte l'URL de connexion d'abord.
@@ -238,7 +238,10 @@ def tester(onglet, nom, conf):
 
 
 def oublier(domaines):
-    """Delete from the bot every cookie of these domains. Rend le nombre efface."""
+    """Delete from the bot these domains' cookies and stored data. Rend le nombre de cookies.
+
+    Many apps keep their sign-in in localStorage or IndexedDB: cookies alone leave them open.
+    """
     import websocket
     ws_url = json.load(urllib.request.urlopen(
         f"http://127.0.0.1:{PORT}/json/version", timeout=10))["webSocketDebuggerUrl"]
@@ -256,14 +259,16 @@ def oublier(domaines):
         return any(hote == x or hote.endswith("." + x) for x in racines)
 
     cibles = [c for c in r["result"]["cookies"] if vise(c["domain"])]
-    if cibles:
-        onglet = Onglet()
-        try:
-            for c in cibles:
-                onglet.cmd("Network.deleteCookies", {"name": c["name"], "domain": c["domain"],
-                                                     "path": c.get("path", "/")})
-        finally:
-            onglet.fermer()
+    hotes = {c["domain"].lstrip(".") for c in cibles} | racines | {"www." + x for x in racines}
+    onglet = Onglet()
+    try:
+        for c in cibles:
+            onglet.cmd("Network.deleteCookies", {"name": c["name"], "domain": c["domain"],
+                                                 "path": c.get("path", "/")})
+        for h in sorted(hotes):
+            onglet.cmd("Storage.clearDataForOrigin", {"origin": "https://" + h, "storageTypes": "all"})
+    finally:
+        onglet.fermer()
     return len(cibles)
 
 

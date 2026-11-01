@@ -11,7 +11,7 @@ try:
     projet = "project-" + os.path.basename((e.get("cwd") or "general").rstrip("/"))
     texte = e.get("prompt") or ""
     if texte:
-        memoire.journal(projet, texte)
+        memoire.journal(projet, texte)        # skips what looks like a key
         # What the user asks to keep is written here, not left to the model's goodwill.
         if (memoire.A_RETENIR.search(texte) and not memoire.SECRET.search(texte)
                 and not texte.rstrip().endswith("?")):

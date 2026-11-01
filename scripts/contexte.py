@@ -4,6 +4,9 @@ import json
 import os
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from memoire import cle  # noqa: E402
+
 RACINE = os.path.expanduser("~/.rasora")
 MEMOIRE = os.path.join(RACINE, "memory")
 
@@ -15,7 +18,7 @@ def fin(nom, lignes):
     return "".join(open(p, encoding="utf-8").readlines()[-lignes:])[:2500]
 
 
-projet = "project-" + os.path.basename(sys.argv[1].rstrip("/")) if len(sys.argv) > 1 else ""
+projet = cle("project-" + os.path.basename(sys.argv[1].rstrip("/"))) if len(sys.argv) > 1 else ""
 print("""You can act on this computer's web and you have a lasting memory, through the rasora tools
 and the `rasora` command. Use them on your own whenever a task touches a website or needs
 something you may already know. Use the lightest thing that works: for an account, a

@@ -83,14 +83,22 @@ def fermer(tid):
         pass
 
 
-def attendre(tid, fin):
+def attendre(tid, fin, depart):
+    """A page that isn't a sign-in page proves nothing until a sign-in page was seen: starting
+    on a site's home page used to close the window before the user could do anything."""
+    vu, dernier = page_de_connexion(depart) or bool(MUR.search(depart)), None
     while time.time() < fin:
         time.sleep(1.5)
         u = adresse(tid)
-        if u is None:
-            return None                  # the user closed the window
-        if u.startswith("http") and not page_de_connexion(u) and not MUR.search(u):
-            return u
+        if u is None:                    # the user closed the window
+            return None if vu else dernier
+        if u.startswith("http"):
+            if page_de_connexion(u) or MUR.search(u):
+                vu = True
+            elif vu:
+                return u
+            else:
+                dernier = u
     return None
 
 
@@ -100,11 +108,12 @@ def main():
     url, minutes = sys.argv[1], float(sys.argv[2]) if len(sys.argv) > 2 else 5
     avant = app_devant()
     tid = ouvrir_fenetre(url)
-    print("A window is open on your screen. Sign in there, it hides itself when you are done.\n"
+    print("A window is open on your screen. Sign in there: it hides itself when you are done, "
+          "or close it yourself.\n"
           "If Chrome offers to save your password, click Save: it can then reconnect by itself.",
           flush=True)
     try:
-        fini = attendre(tid, time.time() + minutes * 60)
+        fini = attendre(tid, time.time() + minutes * 60, url)
     finally:
         fermer(tid)
         nav("hide")

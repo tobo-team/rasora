@@ -15,7 +15,7 @@ Revision 16/08/2026 (ce qu'on a pris a Claude in Chrome, sans payer les captures
   - plus aucun sleep fixe dans `ouvrir` et `clic` : on sonde readyState.
 
 Port par defaut 9333 = navigateur bot (profil ~/.rasora/chrome-profile), jamais le Chrome
-personnel. Surcharger avec CDP_PORT (9222 = vrai Chrome via cdp-chrome.sh).
+personnel.
 
 Usage :
   nav.py ouvrir <url> [timeout] [--voie <nom>]   ouvre un onglet et le GARDE ouvert
@@ -29,7 +29,7 @@ Usage :
   nav.py touche <motif-url> <Enter|Escape|Tab>
   nav.py js <motif-url> "<expr>"       evalue du JS et rend le resultat
   nav.py console [motif-url] [secondes] [--recharger]   erreurs JS + HTTP >= 400
-  nav.py photo <motif-url> <nom> [--sur "<texte>"]      capture /tmp/<nom>.png
+  nav.py photo <motif-url> <nom> [--sur "<texte>"]      capture ~/.rasora/screenshots/<nom>.png
   nav.py cadres <motif-url>            liste les iframes de la page, avec leur index
   nav.py google                        quel compte Google porte le profil du bot
   nav.py onglets                       liste les onglets : #id, @voie, age, url
@@ -62,6 +62,10 @@ Sur une page de connexion, on demande a l utilisateur de se connecter : rasora l
 """
 import base64, json, os, re, sys, time, urllib.parse, urllib.request, websocket
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from sensibles import CHAMP, RISQUE, adresse_privee, clic_masque, refus_url  # noqa: E402
+
+os.umask(0o077)                 # captures and notes show signed-in pages: for this user only
 PORT = int(os.environ.get("CDP_PORT", "9333"))
 BASE = f"http://127.0.0.1:{PORT}"
 
@@ -432,10 +436,19 @@ class Onglet:
         # Les iframes d'un AUTRE domaine (Stripe, un captcha) tournent dans un
         # processus separe : elles n'apparaissent pas dans le frameTree de la page,
         # mais comme des cibles a part entiere, avec leur propre websocket.
-        for t in json.load(urllib.request.urlopen(f"{BASE}/json/list")):
-            if t.get("type") == "iframe" and t.get("webSocketDebuggerUrl"):
-                out.append({"id": t["id"], "url": t.get("url", ""), "dx": 0, "dy": 0,
-                            "ws": t["webSocketDebuggerUrl"]})
+        # /json/list montre les iframes de TOUS les onglets : sans ce tri par parent, viser
+        # une iframe depuis un onglet pouvait agir dans un autre, connecte a un autre site.
+        cibles = [t for t in json.load(urllib.request.urlopen(f"{BASE}/json/list"))
+                  if t.get("type") == "iframe" and t.get("webSocketDebuggerUrl")]
+        parents, encore = {self.t.get("id")}, True
+        while encore:
+            encore = False
+            for t in cibles:
+                if t.get("parentId") in parents and t["id"] not in parents:
+                    parents.add(t["id"])
+                    out.append({"id": t["id"], "url": t.get("url", ""), "dx": 0, "dy": 0,
+                                "ws": t["webSocketDebuggerUrl"]})
+                    encore = True
         # offsets, lus depuis le document principal
         rects = self.js("[...document.querySelectorAll('iframe')].map(f=>{"
                         "const r=f.getBoundingClientRect();"
@@ -635,7 +648,7 @@ JS_ELEMENTS = r"""
 
 JS_CHAMP = r"""
 (() => {
-  const cible = %s, valeur = %s;
+  const cible = %s, valeur = %s, autorise = %s;
   const norm = s => (s||'').replace(/\s+/g,' ').trim().toLowerCase();
   const veut = norm(cible);
   const champs = [...document.querySelectorAll('input,textarea')].filter(e=>{
@@ -645,6 +658,10 @@ JS_CHAMP = r"""
   let e = champs.find(c => [c.placeholder, c.name, c.id, c.getAttribute('aria-label'),
       (c.labels && c.labels[0] && c.labels[0].innerText)].some(v => norm(v).includes(veut)));
   if (!e) return {ok:false, vus:champs.map(c=>c.placeholder||c.name||c.id).filter(Boolean).slice(0,20)};
+  // What the field really is, whatever piece of its label was asked for.
+  const sensible = e.type === 'password' || /^cc-|one-time-code/.test(e.autocomplete || '') ||
+      /card|cvv|cvc|iban|password/i.test([e.name, e.id, e.placeholder].join(' '));
+  if (sensible && !autorise) return {ok:false, sensible:true, champ:(e.placeholder||e.name||e.id||'').slice(0,50)};
   e.scrollIntoView({block:'center', behavior:'instant'});
   e.focus();
   const set = Object.getOwnPropertyDescriptor(
@@ -653,6 +670,20 @@ JS_CHAMP = r"""
   e.dispatchEvent(new Event('input',{bubbles:true}));
   e.dispatchEvent(new Event('change',{bubbles:true}));
   return {ok:true, champ:(e.placeholder||e.name||e.id||'').slice(0,50)};
+})()
+"""
+
+# Ce que la touche Entree declencherait : le bouton focalise, ou celui du formulaire.
+JS_ACTIF = r"""
+(() => {
+""" + JS_UTILS + r"""
+  const a = document.activeElement;
+  if (!a || a === document.body) return '';
+  if (a.form) {
+    const s = a.form.querySelector('button:not([type=button]):not([type=reset]),input[type=submit]');
+    if (s) return nom(s);
+  }
+  return /^(A|BUTTON)$/.test(a.tagName) || a.getAttribute('role') === 'button' ? nom(a) : '';
 })()
 """
 
@@ -897,6 +928,9 @@ def main():
 
     if cmd == "ouvrir":
         url = a[0]
+        raison = refus_url(url)
+        if raison:
+            sys.exit(raison)
         timeout = int(a[1]) if len(a) > 1 else 15
         # `background: True` : l'onglet s'ouvre SANS ramener la fenetre devant.
         # L'ancien appel HTTP /json/new restaurait et repositionnait la fenetre a
@@ -941,6 +975,10 @@ def main():
                 sys.exit(1)
         t = next(x for x in onglets() if x["id"] == tid)
         url_finale = t.get("url", "")
+        # La verification de depart ne voit pas les redirections.
+        if adresse_privee(url_finale):
+            urllib.request.urlopen(f"{BASE}/json/close/{tid}").read()
+            sys.exit("This page led to a local address: refused, tab closed.")
         # Une session tombee ne doit plus remonter jusqu'a l utilisateur : on regreffe
         # et on rouvre la meme page une fois.
         if soigner(url_finale):
@@ -962,6 +1000,11 @@ def main():
 
     motif = a[0] if a else ""
     t = trouver(motif)
+    if cmd not in ("fermer", "discret", "montrer"):
+        # Une page peut aussi arriver la apres coup, par un lien ou un script.
+        adresse = t.get("url", "")
+        if adresse.startswith(("file:", "view-source:")) or adresse_privee(adresse):
+            sys.exit("This tab shows a local address: refused.")
     toucher(t["id"], t.get("url", ""))
     o = Onglet(t)
     oc, ctx, dx, dy = choisir_cadre(o, brut)   # oc = la ou on lit le DOM
@@ -1024,7 +1067,7 @@ def main():
         # petit, mais s'il reste hors de la vue apres defilement on passe au
         # suivant : sur une fiche produit Shopify, le premier « Ajouter au
         # panier » est celui de la barre sticky, masquee hors ecran par design.
-        r = pos = None
+        r = pos = choisi = None
         # Borne de temps : sur un theme anime (GSAP), chaque candidat coute
         # jusqu'a 3 s de stabilisation et il y en a 8 : on passait une demi-minute
         # a chercher un bouton deja trouve au premier essai. On garde le meilleur
@@ -1043,11 +1086,16 @@ def main():
             stabiliser_cible(oc, ctx=ctx)
             p = oc.js(JS_CIBLE_RECT, ctx)
             if isinstance(p, dict) and p.get("ok"):
-                pos = p
+                pos, choisi = p, r
                 if p["dansVue"]:
                     break
         if pos is None:
             sys.exit("target lost after scrolling")
+        # Le garde n'a vu que le texte demande : un bout de libelle ne doit pas cacher
+        # un bouton de paiement.
+        if clic_masque(a[1], choisi["texte"]):
+            sys.exit(f"REFUSED: this button reads \"{choisi['texte']}\". Click it by its full "
+                     "label, so the user can confirm.")
         if not pos["dansVue"]:
             print("WARNING target out of view after scrolling, click uncertain")
         if pos.get("intercepte"):
@@ -1076,7 +1124,7 @@ def main():
                 att = o.pret(8, plancher=0.5)
                 replie = " (repli .click())"
         rester_discret(o)   # une popup de connexion nait au milieu de l'ecran
-        print(f"CLICK on '{r['texte']}' | ready in {att}s{replie}")
+        print(f"CLICK on '{choisi['texte']}' | ready in {att}s{replie}")
         apres = o.js("location.href") or ""
         print("URL:", apres[:130])
         # On ne regreffe pas au milieu d'un enchainement (on perdrait le formulaire
@@ -1086,8 +1134,12 @@ def main():
                   f"rasora login {site_connu(apres)}, then click again")
 
     elif cmd == "champ":
-        print(json.dumps(oc.js(JS_CHAMP % (json.dumps(a[1]), json.dumps(a[2])), ctx),
-                         ensure_ascii=False)[:400])
+        autorise = "true" if CHAMP.search(a[1]) else "false"
+        r = oc.js(JS_CHAMP % (json.dumps(a[1]), json.dumps(a[2]), autorise), ctx)
+        if isinstance(r, dict) and r.get("sensible"):
+            sys.exit(f"REFUSED: \"{r.get('champ')}\" is a sensitive field. Name it in full, so "
+                     "the user can confirm.")
+        print(json.dumps(r, ensure_ascii=False)[:400])
 
     elif cmd == "menu":
         print(json.dumps(oc.js(JS_MENU % (json.dumps(a[1]), json.dumps(a[2])), ctx),
@@ -1095,7 +1147,14 @@ def main():
 
     elif cmd == "touche":
         k = a[1]
-        code = {"Enter": 13, "Escape": 27, "Tab": 9}.get(k, 13)
+        code = {"Enter": 13, "Escape": 27, "Tab": 9}.get(k)
+        if code is None:
+            sys.exit("press takes Enter, Escape or Tab")
+        if k == "Enter":
+            lu = oc.js(JS_ACTIF, ctx)
+            if isinstance(lu, str) and RISQUE.search(lu):
+                sys.exit(f"REFUSED: Enter would press \"{lu[:60]}\". Click it by its label, so "
+                         "the user can confirm.")
         for ty in ("keyDown", "keyUp"):
             o.call("Input.dispatchKeyEvent", {"type": ty, "key": k, "code": k,
                                               "windowsVirtualKeyCode": code,
@@ -1219,7 +1278,16 @@ def main():
                          "Recharger la page, ou capturer une section avec --sur.")
         if res.get("_erreur"):
             sys.exit("capture failed: " + json.dumps(res["_erreur"])[:200])
-        p = f"/tmp/{a[1]}.png"
+        # Pas dans /tmp : une capture montre une page connectee, et /tmp est lisible par
+        # tous. On ne les garde qu'un jour.
+        dossier = os.path.expanduser("~/.rasora/screenshots")
+        os.makedirs(dossier, mode=0o700, exist_ok=True)
+        for f in os.listdir(dossier):
+            f = os.path.join(dossier, f)
+            if time.time() - os.path.getmtime(f) > 86400:
+                os.remove(f)
+        nom = re.sub(r"[^\w.-]", "-", os.path.basename(a[1])).strip(".")[:80] or "capture"
+        p = os.path.join(dossier, nom + ".png")
         brut = base64.b64decode(res["data"])
         import capture_png
         if recadre:
@@ -1290,4 +1358,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except (IndexError, ValueError) as e:
+        sys.exit(f"missing or invalid argument ({e}). Run: rasora help")
+    except OSError as e:
+        sys.exit(f"the browser did not answer ({e}). Run: rasora start")
