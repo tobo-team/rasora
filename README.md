@@ -24,14 +24,14 @@ Inside Claude Code:
 ```
 
 That's it. There is no command to learn and nothing to mention. The first time a task needs
-one of your accounts, Claude asks you once, in one sentence.
+one of your accounts, a small window opens: you sign in once, by hand, and it hides itself.
 
 ## What changes
 
 | | |
 |---|---|
 | **Works on the web** | Search and reading first, a hidden Chrome only when a site needs it. Your screen and tabs stay yours. |
-| **Stays signed in** | Dead sessions repair themselves from your everyday Chrome. |
+| **Stays signed in** | You sign in once per site in its own Chrome, and it stays there for as long as the site allows. |
 | **Remembers** | Your preferences, your projects, what worked on each site, in Markdown files you can read. |
 | **Finds another way** | Visible text, iframes, keyboard, direct links, screenshots, then a different method altogether. |
 | **Costs less** | Text rather than screenshots, Chrome last. No extra model. |
@@ -43,9 +43,10 @@ on the model behaving:
 
 - **A guard outside the model** stops before payments, publishing, deleting and messages,
   and asks you. Page text can't talk it out of it.
-- **Money and identity stay out.** Banks, payment, crypto, password managers and government
-  sites are excluded unless you add one yourself.
-- **Your secrets stay out of reach.** No reading cookies, no local addresses.
+- **It never touches your everyday Chrome.** No reading your cookies, your passwords or your
+  Keychain. It only knows the sites you signed in to in its own window.
+- **You type your own passwords.** The agent never sees them.
+- **Sessions stay out of reach.** Pages can't read cookies, and local addresses are refused.
 - **No server of ours.** No account, no telemetry. Your sessions and memory stay on your Mac.
 - **Stop at any time.** `rasora pause` freezes it, `rasora wipe` removes everything.
 
@@ -57,9 +58,9 @@ Rasora does and doesn't protect you from.
 You never need these, but you can look:
 
 ```bash
-rasora sites             # what is allowed
-rasora allow foo.com     # allow one site
-rasora deny foo.com      # forbid it and delete its cookies from the bot
+rasora sites             # sites you signed in to
+rasora login <url>       # sign in to a site by hand
+rasora logout foo.com    # sign out and delete its cookies
 rasora recall stripe     # search the memory
 rasora do "<task>"       # run a task in the background
 rasora pause             # freeze everything

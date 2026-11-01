@@ -58,7 +58,7 @@ ramasse-miettes tant qu'une session s'en sert.
 
 Le navigateur ne revient JAMAIS devant : plus aucun `Page.bringToFront`, l'onglet se
 croit au premier plan (Emulation.setFocusEmulationEnabled) sans qu'une fenetre bouge.
-Une page de connexion sur un site connu de sessions.json se regreffe toute seule.
+Sur une page de connexion, on demande a l utilisateur de se connecter : rasora login.
 """
 import base64, json, os, re, sys, time, urllib.parse, urllib.request, websocket
 
@@ -360,30 +360,12 @@ def site_connu(url):
 
 
 def soigner(url):
-    """Une page de connexion sur un site connu se repare toute seule.
-
-    On ne rend pas la main a l utilisateur pour un cookie perdu : `sessions.py` sait
-    regreffer la session depuis le profil Chrome qui la porte. Rend le nom de la
-    session reparee, ou None.
-    """
+    """On a sign-in page: tell the agent to ask the user to sign in. Always returns None."""
     if not page_de_connexion(url):
         return None
-    nom = site_connu(url)
-    if not nom:
-        return None
-    print(f"SESSION {nom} DOWN (login page). Repairing...")
-    ici = os.path.dirname(os.path.abspath(__file__))
-    try:
-        r = __import__("subprocess").run(
-            [sys.executable, os.path.join(ici, "sessions.py"), "reparer", nom],
-            capture_output=True, text=True, timeout=240)
-        for l in ((r.stdout or "") + (r.stderr or "")).strip().split("\n")[-3:]:
-            if l.strip():
-                print("  " + l.strip()[:180])
-    except Exception as e:
-        print("  repair failed:", str(e)[:120])
-        return None
-    return nom
+    nom = site_connu(url) or url
+    print(f"SESSION {nom} SIGNED OUT. Ask the user, then run: rasora login {url[:80]}")
+    return None
 
 
 class Onglet:
@@ -1088,7 +1070,7 @@ def main():
         # en cours), mais on nomme la panne et sa reparation en une ligne.
         if page_de_connexion(apres) and site_connu(apres):
             print(f"SESSION {site_connu(apres)} DOWN: "
-                  f"sessions.py reparer {site_connu(apres)}, puis refaire ce clic")
+                  f"rasora login {site_connu(apres)}, then click again")
 
     elif cmd == "champ":
         print(json.dumps(oc.js(JS_CHAMP % (json.dumps(a[1]), json.dumps(a[2])), ctx),

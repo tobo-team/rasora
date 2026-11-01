@@ -47,7 +47,7 @@ COEUR = os.path.expanduser("~/.rasora/state/nav-fond.coeur")
 
 # port -> drapeau qui autorise le gardien. Absent = mode discret leve, on se tait.
 PORTS = {
-    9333: os.path.expanduser("~/.rasora/chrome-profile/.discret"),
+    int(os.environ.get("CDP_PORT", "9333")): os.path.expanduser("~/.rasora/chrome-profile/.discret"),
     9334: os.path.expanduser("~/.chrome-perso/.discret"),
 }
 

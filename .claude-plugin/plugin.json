@@ -1,7 +1,7 @@
 {
   "name": "rasora",
   "displayName": "Rasora",
-  "description": "Hands and a memory for Claude. It works on any site in a hidden Chrome that stays signed in, remembers everything, and finds another way when something fails.",
+  "description": "Hands and a memory for Claude. It works on the web in a hidden Chrome of its own, remembers everything, and finds another way when something fails.",
   "author": { "name": "Camille and Micka" },
   "repository": "https://github.com/vocalyagent/rasora",
   "license": "MIT",

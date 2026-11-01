@@ -5,7 +5,7 @@
 ICI="$(cd "$(dirname "$0")" && pwd)"
 ENTREE="$(cat)"
 RACINE="$HOME/.rasora"
-V="$(cat "$ICI"/* 2>/dev/null | cksum | cut -d' ' -f1)"
+V="$(find "$ICI" -maxdepth 1 -type f ! -name sessions.json -print0 | sort -z | xargs -0 cat | cksum | cut -d' ' -f1)"
 if [ "$(cat "$RACINE/.version" 2>/dev/null)" != "$V" ]; then
   nohup bash "$ICI/bootstrap.sh" >/dev/null 2>&1 </dev/null &
   disown

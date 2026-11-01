@@ -23,7 +23,9 @@
 #   navigateur-bot.sh --arret        arrete UNIQUEMENT ce navigateur
 
 set -uo pipefail
+[ -s "$HOME/.rasora/port" ] && CDP_PORT="$(cat "$HOME/.rasora/port")"
 PORT="${CDP_PORT:-9333}"
+export CDP_PORT="$PORT"
 DOSSIER="$HOME/.rasora/chrome-profile"
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 MARQUE="user-data-dir=$DOSSIER"

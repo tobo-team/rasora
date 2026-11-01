@@ -15,7 +15,18 @@ mkdir "$RACINE/.boot" 2>/dev/null || {                       # another setup is 
 trap 'rmdir "$RACINE/.boot" 2>/dev/null' EXIT
 mkdir -p "$DEST" "$ETAT" "$RACINE/sessions" "$RACINE/memory"
 
-[ "$ICI" = "$DEST" ] || cp "$ICI"/* "$DEST"/
+# A port of our own. Never share one: another tool may already drive a Chrome on 9333.
+if [ ! -s "$RACINE/port" ]; then
+  P="${CDP_PORT:-9333}"
+  while [ "$P" -lt 9400 ] && curl -s --max-time 1 "http://127.0.0.1:$P/json/version" >/dev/null 2>&1; do
+    P=$((P + 1))
+  done
+  echo "$P" > "$RACINE/port"
+fi
+export CDP_PORT="$(cat "$RACINE/port")"
+
+empreinte() { find "$1" -maxdepth 1 -type f ! -name sessions.json -print0 | sort -z | xargs -0 cat | cksum | cut -d' ' -f1; }
+[ "$ICI" = "$DEST" ] || find "$ICI" -maxdepth 1 -type f -exec cp {} "$DEST"/ \;
 chmod +x "$DEST"/*.py "$DEST"/*.sh "$DEST/rasora" 2>/dev/null
 
 [ -x "$VENV/bin/python" ] || python3 -m venv "$VENV" >/dev/null 2>&1 || exit 1
@@ -39,6 +50,7 @@ if [ "${RASORA_NO_LAUNCHD:-0}" != "1" ]; then
       echo '  </array>'
       if [ "$mode" = "boucle" ]; then echo '  <key>KeepAlive</key><true/>'
       else echo "  <key>StartInterval</key><integer>$mode</integer>"; fi
+      echo "  <key>EnvironmentVariables</key><dict><key>CDP_PORT</key><string>$CDP_PORT</string></dict>"
       echo '  <key>RunAtLoad</key><true/>'
       echo "  <key>StandardOutPath</key><string>$ETAT/$nom.log</string>"
       echo "  <key>StandardErrorPath</key><string>$ETAT/$nom.log</string>"
@@ -46,11 +58,10 @@ if [ "${RASORA_NO_LAUNCHD:-0}" != "1" ]; then
     } > "$f"
     launchctl load "$f" >/dev/null 2>&1
   }
-  plist com.rasora.sessions "$VENV/bin/python" "$DEST/sessions.py"  1200 reparer
   plist com.rasora.nav-gc   /usr/bin/python3    "$DEST/nav-gc.py"    300
   plist com.rasora.nav-fond "$VENV/bin/python"  "$DEST/nav-fond.py"  boucle
   # focus-fond needs PyObjC, which only the system python ships.
   plist com.rasora.focus-fond /usr/bin/python3    "$DEST/focus-fond.py" boucle
 fi
 
-cat "$ICI"/* 2>/dev/null | cksum | cut -d' ' -f1 > "$RACINE/.version"
+empreinte "$ICI" > "$RACINE/.version"

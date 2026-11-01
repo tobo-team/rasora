@@ -1,28 +1,14 @@
 #!/usr/bin/env python3
-"""Garde les sessions du navigateur bot vivantes, sans jamais deranger l utilisateur.
+"""Which sites are signed in inside Rasora's own Chrome.
 
-Pourquoi (22/08/2026) : une re-authentification demandee par Google a fait tomber
-d'un coup la session Google ET la session admin Shopify du navigateur bot. Une
-session en moins, c'est une voie de travail bloquee et un aller-retour vers
-l utilisateur. Le Chrome reel personnel, lui, garde ses sessions : on va les chercher.
+  sessions.py etat [site ...]    test each site, SIGNED IN or SIGNED OUT
 
-Le principe : le bot n'a jamais besoin de se connecter. Il emprunte les cookies
-du profil Chrome qui porte deja le compte (table `sessions.json`), par CDP, sans
-relancer quoi que ce soit et sans qu'un mot de passe circule.
-
-  sessions.py etat [nom ...]      teste chaque session, VIVANTE ou MORTE
-  sessions.py reparer [nom ...]   regreffe ce qui est mort, puis reteste
-  sessions.py assurer <nom>       reparer une seule session, silencieux si OK
-  sessions.py elaguer             teste tout, RETIRE de la table ce qui ne vit pas
-  sessions.py profils             quel profil Chrome porte quel compte
-
-Appele toutes les 20 minutes par launchd `com.rasora.sessions`. Aucun modele
-n'est invoque : le cout est nul.
+A dead session is never repaired from another browser: the user signs in again with
+`rasora login`.
 """
 import json
 import os
 import re
-import subprocess
 import sys
 import time
 import urllib.parse
@@ -31,11 +17,8 @@ import urllib.request
 PORT = int(os.environ.get("CDP_PORT", "9333"))
 ICI = os.path.dirname(os.path.abspath(__file__))
 TABLE = os.path.join(ICI, "sessions.json")
-GREFFE = os.path.join(ICI, "cookies-vers-bot.py")
-PY = os.path.join(ICI, ".venv-cdp", "bin", "python")
 SAUVEGARDES = os.path.expanduser("~/.rasora/sessions")
 JOURNAL = os.path.join(SAUVEGARDES, "sessions.log")
-CHROME = os.path.expanduser("~/Library/Application Support/Google/Chrome")
 
 
 def note(msg):
@@ -48,7 +31,7 @@ def note(msg):
 
 def table():
     if not os.path.exists(TABLE):
-        sys.exit("no site allowed yet. Run: rasora allow <site>")
+        return {}
     return json.load(open(TABLE, encoding="utf-8"))
 
 
@@ -254,55 +237,6 @@ def tester(onglet, nom, conf):
     return False, "no proof of login"
 
 
-def greffer(profil, conf):
-    cmd = [PY, GREFFE, profil] + conf["domaines"]
-    r = subprocess.run(cmd, capture_output=True, text=True, cwd=os.path.expanduser("~"))
-    sortie = (r.stdout or "") + (r.stderr or "")
-    poses = sortie.strip().split("\n")[0] if sortie.strip() else "rien"
-    return r.returncode == 0, poses
-
-
-def profils_candidats(domaines, limite=4):
-    """Les profils Chrome qui portent le plus de cookies pour ces domaines.
-
-    On ne fait pas confiance au profil ecrit dans la table : l utilisateur se
-    reconnecte parfois ailleurs, et c'est justement ce qu'on ne veut plus
-    avoir a lui demander.
-    """
-    import shutil
-    import sqlite3
-    import tempfile
-    racines = {d.lstrip("*.").lower() for d in domaines if "." in d.lstrip("*.")}
-    if not racines:
-        return []
-    # exact domain or subdomain: a loose LIKE '%x%' matched every host with an x in it
-    ou = " OR ".join("host_key = ? OR host_key = ? OR host_key LIKE ?" for _ in racines)
-    valeurs = [v for r in sorted(racines) for v in (r, "." + r, "%." + r)]
-    scores = []
-    for prof in sorted(os.listdir(CHROME)):
-        src = os.path.join(CHROME, prof, "Cookies")
-        if not os.path.exists(src):
-            continue
-        tmp = tempfile.mkdtemp()
-        copie = os.path.join(tmp, "Cookies")
-        try:
-            shutil.copy2(src, copie)
-            for suffixe in ("-wal", "-shm"):
-                if os.path.exists(src + suffixe):
-                    shutil.copy2(src + suffixe, copie + suffixe)
-            con = sqlite3.connect(f"file:{copie}?mode=ro", uri=True)
-            n = con.execute("SELECT count(*) FROM cookies WHERE " + ou, valeurs).fetchone()[0]
-            con.close()
-            if n:
-                scores.append((n, prof))
-        except Exception:
-            pass
-        finally:
-            shutil.rmtree(tmp, ignore_errors=True)
-    scores.sort(reverse=True)
-    return [prof for _, prof in scores[:limite]]
-
-
 def oublier(domaines):
     """Delete from the bot every cookie of these domains. Rend le nombre efface."""
     import websocket
@@ -333,105 +267,24 @@ def oublier(domaines):
     return len(cibles)
 
 
-def profils():
-    d = json.load(open(os.path.join(CHROME, "Local State"), encoding="utf-8"))
-    for k, v in sorted(d.get("profile", {}).get("info_cache", {}).items()):
-        if v.get("user_name"):
-            print(f"  {k:12} {v.get('user_name')}")
-
-
 def main():
-    action = sys.argv[1] if len(sys.argv) > 1 else "etat"
-    noms = sys.argv[2:]
-
-    if action == "profils":
-        return profils()
-
     if not bot_vivant():
-        note("browser is off. Run: rasora start")
-        sys.exit(1)
-
-    conf_all = table()
-    if action == "greffer":
-        # First visit to a site: copy now. A probe would see a public page, call the
-        # session alive and copy nothing.
-        for nom in noms:
-            if nom in conf_all:
-                print(f"  {nom}: {greffer(conf_all[nom]['profil'], conf_all[nom])[1]}")
+        print("browser is off, nothing to check")
         return
-
-    # A site added on first visit is not probed every 20 minutes: it heals itself
-    # the next time a page lands on its login screen. Tests stay cheap that way.
-    cibles = {k: v for k, v in conf_all.items()
-              if k in noms or (not noms and not v.get("lazy"))}
-    if not cibles and not noms:
-        print("  nothing to check")
-        return
+    conf_all, noms = table(), sys.argv[2:]
+    cibles = {k: v for k, v in conf_all.items() if not noms or k in noms}
     if not cibles:
-        sys.exit(f"unknown session. Known: {', '.join(conf_all)}")
-
+        print("  no site yet. Run: rasora login <url>")
+        return
     onglet = Onglet()
     try:
-        morts = []
         for nom, conf in cibles.items():
             try:
                 ok, comment = tester(onglet, nom, conf)
             except Exception as e:
                 ok, comment = False, f"probe failed ({type(e).__name__})"
-            if action in ("etat", "elaguer"):
-                suffixe = f"  [{comment}]" if comment else ""
-                print(f"  {nom:10} {'ALIVE' if ok else 'DEAD'}  ({conf['compte']}){suffixe}")
-            if not ok:
-                morts.append((nom, conf))
-
-        if action == "etat":
-            return
-
-        if action == "elaguer":
-            # Une session qu'aucun profil Chrome ne porte n'a rien a faire dans la
-            # table : elle ferait travailler le gardien toutes les 20 minutes pour
-            # rien et afficherait une fausse alerte a chaque etat. On la retire ;
-            # `configurer-sessions.py` la remettra le jour ou le compte existe.
-            for nom, _ in morts:
-                conf_all.pop(nom, None)
-            json.dump(conf_all, open(TABLE, "w", encoding="utf-8"),
-                      indent=2, ensure_ascii=False)
-            if morts:
-                note("removed (not signed in in Chrome): "
-                     + ", ".join(n for n, _ in morts))
-            print(f"  {len(conf_all)} sessions kept: {', '.join(conf_all)}")
-            return
-
-        for nom, conf in morts:
-            candidats = [conf["profil"]] + [p for p in profils_candidats(conf["domaines"])
-                                            if p != conf["profil"]]
-            restauree = None
-            for profil in candidats:
-                fait, detail = greffer(profil, conf)
-                if not fait:
-                    continue
-                time.sleep(2)
-                try:
-                    revivante = tester(onglet, nom, conf)[0]
-                except Exception:
-                    revivante = False
-                if revivante:
-                    restauree = (profil, detail)
-                    break
-            if restauree:
-                profil, detail = restauree
-                note(f"{nom} : session restored from {profil} ({detail})")
-                if profil != conf["profil"]:
-                    conf_all[nom]["profil"] = profil
-                    json.dump(conf_all, open(TABLE, "w", encoding="utf-8"),
-                              indent=2, ensure_ascii=False)
-                    note(f"{nom} : table now points to {profil}")
-            else:
-                note(f"{nom} : not signed in. No Chrome profile "
-                     f"({', '.join(candidats)}) holds this session. Sign in once to "
-                     f"{nom} in your everyday Chrome, repair then resumes by itself.")
-        if action == "reparer" and not morts:
-            print("  all sessions are alive")
+            suffixe = f"  [{comment}]" if comment else ""
+            print(f"  {nom:18} {'SIGNED IN' if ok else 'SIGNED OUT'}{suffixe}")
     finally:
         onglet.fermer()
 

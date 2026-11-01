@@ -5,7 +5,7 @@ description: Use when a task needs a website: read or act on Gmail, GitHub, Shop
 
 # rasora
 
-A separate Chrome, hidden, signed in to what the user allowed. You do the work. Don't hand
+A separate Chrome, hidden, signed in where the user signed in. You do the work. Don't hand
 the user instructions like "go to this page and click". Commands below use `rasora`;
 if it isn't on the PATH, it is `~/.rasora/bin/rasora`. The same actions exist as MCP tools.
 
@@ -47,7 +47,7 @@ Never stop at the first failure, and never repeat the same command unchanged. Go
 5. Look at the page: `screenshot <tab> <name>`, then read the image.
 6. Use `js <tab> "<expression>"`, including `element.shadowRoot` for shadow DOM.
 7. Change method: an official API, an export, a CLI, the mobile or old version of the site.
-8. A dead session: `rasora repair`. If the site isn't allowed, say so in one line.
+8. A sign-in page: tell the user in one line, then `rasora login <url>`. They sign in by hand.
 
 Only stop after real attempts, and report in one line what you tried and what is needed.
 
@@ -75,4 +75,4 @@ confirmation email in their inbox and click the link. Store nothing secret in me
 - A 2FA prompt or a CAPTCHA belongs to the user. Don't try to get around them.
 - If a safety guard stops an action, don't look for a way around it. Ask the user.
 - One real account for one real user. No fake identities, no bulk sign-ups.
-- Never run `wipe`, `allow` or `deny` unless the user asks.
+- Never run `wipe` or `logout` unless the user asks. Never type a password for the user.

@@ -6,7 +6,6 @@
 #   less install.sh
 #   bash install.sh
 #
-#   RASORA_SITES=github,gmail    allow these sites without asking (all = everywhere)
 #   RASORA_NO_LAUNCHD=1          do not install the background guardians
 set -uo pipefail
 
@@ -35,23 +34,10 @@ bash "$SOURCE/scripts/bootstrap.sh" || stop "setup failed"
 echo "ok: installed in ~/.rasora"
 echo
 
-"$DEST/navigateur-bot.sh" >/dev/null 2>&1 || stop "the browser did not start"
-PY="$DEST/.venv-cdp/bin/python"
-if [ -n "${RASORA_SITES:-}" ]; then
-  S="${RASORA_SITES//,/ }"; [ "$S" = "all" ] && S="--all"
-  # shellcheck disable=SC2086
-  "$PY" "$DEST/configurer-sessions.py" allow $S
-else
-  "$PY" "$DEST/configurer-sessions.py" ask
-fi
-if [ -s "$DEST/sessions.json" ] && [ "$(cat "$DEST/sessions.json")" != "{}" ]; then
-  echo "Copying sessions. macOS will ask for Keychain access once: click Allow, not Always Allow."
-  "$PY" "$DEST/sessions.py" reparer 2>&1 | sed 's/^/  /'
-fi
-
 cat <<FIN
 
 Done. Add it to your MCP client:  command $DEST/rasora, args ["mcp"]
+Sign in to a site:                $DEST/rasora login https://github.com/login
 Remove it all:                    $DEST/rasora wipe
 
 FIN

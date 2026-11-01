@@ -30,7 +30,7 @@ remet le compteur a zero, ce qui est exactement le signal « quelqu'un s'en sert
 """
 import json, os, re, sys, time, urllib.request
 
-PORT = 9333
+PORT = int(os.environ.get("CDP_PORT", "9333"))
 DELAI_MIN = int(os.environ.get("NAV_GC_DELAI", "30"))
 # Une reservation @voie protege un onglet, mais pas eternellement : la session qui
 # l'a prise meurt sans toujours appeler `nav.py fermer`. Mesure du 27/08/2026 :
@@ -263,10 +263,23 @@ def maintenant_(n):
           f"{', '.join(sorted(proteges))})")
 
 
+def repos():
+    """Save battery: stop the browser after 45 min without use. It restarts on next use."""
+    base = os.path.expanduser("~/.rasora")
+    trace = os.path.join(base, "state", "last-use")
+    limite = int(os.environ.get("RASORA_IDLE_MIN", "45")) * 60
+    if os.path.exists(trace) and time.time() - os.path.getmtime(trace) > limite:
+        import subprocess
+        subprocess.run([os.path.join(base, "bin", "navigateur-bot.sh"), "--arret"],
+                       capture_output=True)
+        print("browser stopped after inactivity")
+
+
 if __name__ == "__main__":
     a = sys.argv[1:]
     if not a:
         passe()
+        repos()
     elif a[0] == "voir":
         passe(sec=True)
     elif a[0] == "garder" and len(a) > 1:

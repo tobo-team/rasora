@@ -22,6 +22,11 @@ class Memoire(unittest.TestCase):
         self.m.journal("project-a", "key sk-abcdefghijklmnop")
         self.assertFalse(os.path.exists(os.path.join(self.m.RACINE, "journal", "project-a.md")))
 
+    def test_a_retenir(self):
+        for x in ("je prefere des reponses courtes", "garde ca en tete", "remember this"):
+            self.assertTrue(self.m.A_RETENIR.search(x), x)
+        self.assertFalse(self.m.A_RETENIR.search("ouvre mon gmail"))
+
     def test_journal_garde_le_reste(self):
         self.m.journal("project-a", "fix the login page")
         p = os.path.join(self.m.RACINE, "journal", "project-a.md")

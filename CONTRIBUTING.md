@@ -4,15 +4,14 @@ Thanks for helping.
 
 ## Most useful right now
 
-- A site recipe: add a domain list and a check URL to `RECETTES` in
-  `scripts/configurer-sessions.py`.
+- A report of a site where sign-in detection or text clicking fails.
 - A bug report with your macOS version, Chrome version and the exact output.
-- Linux or Windows support: the cookie and window code is macOS-only today.
+- Linux or Windows support: the window code is macOS-only today.
 
 ## Rules
 
 - No telemetry, and no server of ours. Sessions and memory never leave the machine.
-- Nothing is copied unless the user allowed it.
+- Never read the user's everyday browser, cookies or Keychain.
 - Don't add anything that bypasses 2FA, CAPTCHAs or a site's security.
 - No fake identities or bulk account creation.
 - Never paste real cookies, tokens or account details in an issue.

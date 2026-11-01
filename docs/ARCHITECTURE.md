@@ -11,7 +11,7 @@ You talk to Claude
       |
       |-- web.py        open data, then a plain request
       |-- nav.py        hidden Chrome, last resort or signed-in sites
-      |-- sessions.py   repairs dead sessions from your Chrome
+      |-- connexion.py  shows a window so you sign in by hand
       |-- memoire.py    plain Markdown files
 ```
 
@@ -21,8 +21,9 @@ You talk to Claude
 | `scripts/sensibles.py` | Sites left out by default, local address checks |
 | `scripts/web.py` | Search and read without a browser |
 | `scripts/nav.py` | Drives Chrome by visible text |
-| `scripts/sessions.py` | Tests and repairs sessions |
-| `scripts/configurer-sessions.py` | What is allowed |
+| `scripts/connexion.py` | Sign-in window |
+| `scripts/sessions.py` | Tests which sites are signed in |
+| `scripts/configurer-sessions.py` | Sites you signed in to |
 | `scripts/memoire.py` | Memory |
 | `scripts/mcp_server.py` | MCP tools, standard library only |
 | `scripts/bootstrap.sh` | Silent setup in `~/.rasora` |

@@ -30,13 +30,16 @@ def cadre(a):
 
 TAB = {"type": "string", "description": "Part of the tab URL, or #id from browser_tabs"}
 OUTILS = [
-    outil("browser_open", "Open a URL in the bot browser, already signed in on allowed sites."
+    outil("browser_open", "Open a URL in the bot browser, signed in where the user signed in."
           + PRUDENCE, {"url": {"type": "string"}}, ["url"], lambda a: ["open", a["url"]]),
-    outil("browser_read", "Read the visible text of a tab." + PRUDENCE,
-          {"tab": TAB, "chars": {"type": "integer"}}, ["tab"],
-          lambda a: ["read", a["tab"], str(a.get("chars", 4000))]),
-    outil("browser_elements", "List what can be clicked or filled in a tab.", {"tab": TAB},
-          ["tab"], lambda a: ["elements", a["tab"]]),
+    outil("browser_read", "Read the visible text of a tab. If text seems missing (editors, "
+          "widgets, payment forms), it is in an iframe: call browser_frames, then read again "
+          "with frame." + PRUDENCE,
+          {"tab": TAB, "chars": {"type": "integer"}, "frame": {"type": "string"}}, ["tab"],
+          lambda a: ["read", a["tab"]] + cadre(a) + [str(a.get("chars", 4000))]),
+    outil("browser_elements", "List what can be clicked or filled in a tab.",
+          {"tab": TAB, "frame": {"type": "string"}}, ["tab"],
+          lambda a: ["elements", a["tab"]] + cadre(a)),
     outil("browser_click", "Click the element showing this visible text. Inside an iframe, "
           "pass frame (index or part of its URL, from browser_frames).",
           {"tab": TAB, "text": {"type": "string"}, "frame": {"type": "string"}},
@@ -70,10 +73,10 @@ OUTILS = [
           "needed." + PRUDENCE, {"url": {"type": "string"}, "chars": {"type": "integer"}},
           ["url"], lambda a: ["get", a["url"], str(a.get("chars", 8000))]),
     outil("browser_tabs", "List open tabs.", {}, [], lambda a: ["tabs"]),
-    outil("sessions_status", "Show which allowed sessions are alive.", {}, [],
+    outil("sessions_status", "Show which sites are still signed in.", {}, [],
           lambda a: ["sessions"]),
-    outil("sessions_repair", "Repair dead sessions of allowed sites.", {}, [],
-          lambda a: ["repair"]),
+    outil("session_login", "Show a window so the user signs in by hand. Waits, then hides it.",
+          {"url": {"type": "string"}}, ["url"], lambda a: ["login", a["url"]]),
     outil("memory_save", "Remember what worked or failed, for a site or 'general'.",
           {"site": {"type": "string"}, "text": {"type": "string"}}, ["site", "text"],
           lambda a: ["remember", a["site"], a["text"]]),
@@ -93,9 +96,9 @@ def executer(nom, args):
             return "only http and https URLs are allowed", True
     try:
         r = subprocess.run(["/bin/bash", CLI] + o["argv"](args), capture_output=True,
-                           text=True, timeout=180, cwd=os.path.expanduser("~"))
+                           text=True, timeout=420, cwd=os.path.expanduser("~"))
     except subprocess.TimeoutExpired:
-        return "timed out after 180 s", True
+        return "timed out", True
     except KeyError as e:
         return f"missing argument {e}", True
     texte = ((r.stdout or "") + (r.stderr or "")).strip() or "done"

@@ -15,6 +15,9 @@ import time
 import urllib.parse
 
 RACINE = os.path.expanduser("~/.rasora/memory")
+A_RETENIR = re.compile(r"retiens|souviens[- ]toi|garde (ca|ça|le|la) en t[eê]te|en t[eê]te pour|"
+                       r"n'oublie pas|je pr[eé]f[eè]re|remember|keep in mind|i prefer|"
+                       r"from now on|[àa] partir de maintenant|toujours|jamais", re.I)
 SECRET = re.compile(r"(sk-[a-z0-9-]{12}|gh[pousr]_[a-z0-9]{12}|akia[0-9a-z]{12}|password|mot de passe|bearer )", re.I)
 
 
@@ -58,6 +61,7 @@ def show(nom):
 
 def search(mots):
     if not os.path.isdir(RACINE):
+        print("nothing remembered yet")
         return
     mots = [m.lower() for m in mots]
     for f in sorted(os.listdir(RACINE)):

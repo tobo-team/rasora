@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """What the agent must never reach on its own.
 
-Sites holding money, identity or passwords are left out of "everywhere" mode. A user can
-still allow one by name. Local addresses are refused so a page can't send the agent to the
+Signing in to a site holding money, identity or passwords shows a warning. Local addresses are refused so a page can't send the agent to the
 browser's debug port or to a machine on the home network.
 """
 import ipaddress

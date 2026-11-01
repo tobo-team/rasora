@@ -1,12 +1,20 @@
 # Changelog
 
+## 0.4.0
+
+- Rasora no longer touches your everyday Chrome or Keychain. You sign in by hand, once per
+  site, in its own window. Copying cookies is gone, and so is the dependency it needed.
+- Its own port, so it runs next to anything else.
+- No more prompts for ordinary actions, and your settings are never changed.
+- Memory no longer depends on the model: what you ask to keep is written by the hook, and
+  recent requests come back at session start.
+- The browser stops after 45 minutes without use.
+
 ## 0.3.0
 
 - Safety guard outside the model: asks before payments, publishing, deleting and messages,
   refuses cookie access and local addresses.
-- Banks, payment, crypto, password managers and government sites stay out of "everywhere".
 - Web search and page reading without Chrome. The browser is now the last resort.
-- Keychain: one Allow. Never Always Allow.
 - Locked dependencies with hashes, tests, CI and CodeQL.
 
 ## 0.2.0

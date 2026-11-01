@@ -3,24 +3,23 @@
 set -uo pipefail
 BIN="$HOME/.rasora/bin"
 PY="$BIN/.venv-cdp/bin/python"
-PORT="${CDP_PORT:-9333}"
 ICI="$(cd "$(dirname "$0")" && pwd)"
 
 # First use, from the plugin: set up without asking anything.
 [ -x "$PY" ] || bash "$ICI/bootstrap.sh" >/dev/null 2>&1 || { echo "setup failed: bash $ICI/bootstrap.sh" >&2; exit 1; }
+[ -s "$HOME/.rasora/port" ] && CDP_PORT="$(cat "$HOME/.rasora/port")"
+export CDP_PORT="${CDP_PORT:-9333}"
+PORT="$CDP_PORT"
 
 aide() {
   cat <<'FIN'
 rasora: hands and a memory for your AI.
 
-Sites
-  rasora sites              sites found in Chrome, and which are allowed
-  rasora allow <site...>    allow a site or a domain (foo.com)
-  rasora allow --all        everywhere, except banks, crypto and the like
-  rasora setup              the one yes: everywhere, and no more prompts from Claude
-  rasora deny <site...>     forbid a site and delete its cookies (--all for all)
-  rasora repair             test allowed sessions, repair the dead ones
-  rasora sessions           show which sessions are alive
+Accounts
+  rasora login <url>        open a window, sign in once by hand, it hides itself after
+  rasora logout <site>      sign out and delete that site's cookies
+  rasora sites              sites you signed in to
+  rasora sessions           check that they are still signed in
 
 Web, cheapest way first
   rasora search <words>     search the web
@@ -81,7 +80,6 @@ effacer() {
   "$BIN/navigateur-bot.sh" --arret >/dev/null 2>&1
   sleep 1
   pgrep -f "user-data-dir=$HOME/.rasora/chrome-profile" 2>/dev/null | xargs kill -9 2>/dev/null
-  python3 "$BIN/reglages.py" remove >/dev/null 2>&1
   rm -rf "$HOME/.claude/skills/rasora" "$HOME/.local/bin/rasora"
   cd "$HOME" && rm -rf "$HOME/.rasora"
   echo "rasora data is gone. Your own Chrome was not touched."
@@ -115,15 +113,14 @@ taches() {
 
 c="${1:-help}"
 [ $# -gt 0 ] && shift
+mkdir -p "$HOME/.rasora/state" 2>/dev/null; : > "$HOME/.rasora/state/last-use" 2>/dev/null
 case "$c" in
   help|-h|--help) aide ;;
   start)   "$BIN/navigateur-bot.sh" ;;
   stop)    "$BIN/navigateur-bot.sh" --arret ;;
-  setup)   assure; "$PY" "$BIN/configurer-sessions.py" allow --all && python3 "$BIN/reglages.py" add && "$PY" "$BIN/sessions.py" reparer ;;
   sites)   "$PY" "$BIN/configurer-sessions.py" list ;;
-  allow)   assure; "$PY" "$BIN/configurer-sessions.py" allow "$@" && "$PY" "$BIN/sessions.py" reparer ;;
-  deny)    assure; "$PY" "$BIN/configurer-sessions.py" deny "$@" ;;
-  repair)  assure; "$PY" "$BIN/sessions.py" reparer ;;
+  login)   "$PY" "$BIN/sensibles.py" check-url "${1:-}" || exit 1; assure; exec "$PY" "$BIN/connexion.py" "$@" ;;
+  logout)  assure; "$PY" "$BIN/configurer-sessions.py" remove "$@" ;;
   sessions) assure; "$PY" "$BIN/sessions.py" etat ;;
   mcp)     exec "$PY" "$BIN/mcp_server.py" ;;
   do)      assure; lancer "$@" ;;
@@ -138,8 +135,6 @@ case "$c" in
   open|ouvrir)
     "$PY" "$BIN/sensibles.py" check-url "${1:-}" || exit 1
     assure
-    ajoute="$("$PY" "$BIN/configurer-sessions.py" ensure "${1:-}" 2>/dev/null)"
-    [ -z "$ajoute" ] || "$PY" "$BIN/sessions.py" greffer "$ajoute" 2>&1 | tail -1
     "$PY" "$BIN/nav.py" open "$@"; rc=$?
     "$PY" "$BIN/memoire.py" show "${1:-general}"
     exit $rc ;;
