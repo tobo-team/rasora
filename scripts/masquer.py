@@ -78,7 +78,12 @@ def main():
         print("aucun navigateur de travail lance")
         return 1
     for pid in ps:
-        if quoi == "montrer":
+        if quoi == "afficher":           # visible, without taking the foreground
+            visible(pid, "true")
+        elif quoi == "devant":
+            osa(f'tell application "System Events" to set frontmost of '
+                f'(first application process whose unix id is {pid}) to true')
+        elif quoi == "montrer":
             visible(pid, "true")
             osa(f'tell application "System Events" to set frontmost of '
                 f'(first application process whose unix id is {pid}) to true')

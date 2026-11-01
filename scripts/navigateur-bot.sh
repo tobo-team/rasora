@@ -54,7 +54,9 @@ if ! vivant; then
   pids=$(mes_pids); [ -n "$pids" ] && { echo "$pids" | xargs kill 2>/dev/null; sleep 1; }
 
   mkdir -p "$DOSSIER"
-  "$CHROME" \
+  # `open -g -j`: launched hidden and in the background. Starting the binary directly
+  # takes the foreground, and macOS then drags the user to another desktop.
+  open -g -j -n -a "${CHROME%/Contents/MacOS/*}" --args \
     --remote-debugging-port="$PORT" \
     --remote-debugging-address=127.0.0.1 \
     --remote-allow-origins="http://127.0.0.1:$PORT" \
@@ -65,8 +67,7 @@ if ! vivant; then
     --disable-background-timer-throttling \
     --window-size=1200,900 --window-position=-2400,0 \
     ${RASORA_CHROME_ARGS:-} \
-    "about:blank" >/dev/null 2>&1 &
-  disown
+    "about:blank" >/dev/null 2>&1
 
   for _ in $(seq 1 30); do vivant && break; sleep 1; done
   vivant || { echo "browser did not answer after 30 s" >&2; exit 1; }
