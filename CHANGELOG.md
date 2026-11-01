@@ -2,6 +2,9 @@
 
 ## 0.5.0
 
+- Guard: every `rasora` call in a chained or nested command is checked, and the strictest
+  answer wins. Reported by Micka.
+
 - Sign-ins survive a browser stop on sites that allow it, and Chrome can save passwords in
   Rasora's own profile, so signing in again takes one click.
 - Claude knows which sites are signed in, and a daily visit keeps sessions fresh.

@@ -47,6 +47,9 @@ not a public issue.
 - **Prompt injection.** The guard covers the riskiest actions, not all of them. A page could
   still trick the agent into reading something on a signed-in site, or submit a form with the
   Enter key. Stay around for sensitive work.
+- **Disguised commands.** The guard reads every `rasora` call in a shell command, however it is
+  chained. A command hidden on purpose, through a variable, `eval` or an encoded string, can
+  still get past it. With permissions switched off, it is your only brake.
 - **Word-based checks.** The guard looks for words like "Pay" or "Delete". A button with an
   unusual label can slip past it.
 - **Sensitive accounts.** Don't sign in to your bank or email unless you need to, and run

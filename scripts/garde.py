@@ -30,6 +30,9 @@ BACKDOOR = re.compile(r"127\.0\.0\.1:9\d{3}|localhost:9\d{3}")
 REGLAGES = ("login", "logout", "wipe", "do", "resume")
 SORTIE = re.compile(r"\.submit\(|fetch\(|XMLHttpRequest|sendBeacon|new Image|\.src\s*=|"
                     r"location(\.href)?\s*=|window\.open|WebSocket")
+# The word rasora, or the script behind it, wherever it stands in a command.
+APPEL = re.compile(r"(?:^|[\s;&|/(`'\"=])(?:rasora|\.rasora/bin/nav\.py)\s+")
+RANG = {"allow": 0, "ask": 1, "deny": 2}
 SEUL = re.compile(r"^\s*(~/\.rasora/bin/)?rasora\s+[^;&|`$<>\n]*$")
 
 
@@ -66,42 +69,67 @@ def action(outil, e):
     return "allow", "Ordinary Rasora action."
 
 
+def appels(cmd):
+    """Every rasora call in a shell command, however it is chained or nested.
+
+    A scan rather than a parse: `a; b`, `a && b`, `$(a)`, backticks and `bash -c "a"` all
+    land here, because each occurrence of the word is read on its own.
+    """
+    for m in APPEL.finditer(cmd):
+        reste = cmd[m.end():]
+        try:
+            lex = shlex.shlex(reste, posix=True, punctuation_chars=";&|()<>`")
+            lex.whitespace = " \t"
+            lex.whitespace_split = True
+            lex.commenters = ""
+            mots = []
+            for mot in lex:
+                if mot == "\n" or set(mot) <= set(";&|()<>`"):
+                    break
+                mots.append(mot)
+        except ValueError:               # a quote closes outside: `bash -c "rasora click Pay"`
+            ligne = re.split(r"[;&|\n`)]", reste, maxsplit=1)[0]
+            mots = [x.strip("\"'") for x in ligne.split()]
+        if mots:
+            yield mots[0], mots[1:]
+
+
+def appel(sous, a):
+    """The verdict for one call. Arguments are joined: their order must not hide a word."""
+    if sous in REGLAGES:
+        return "ask", f"Run `rasora {sous}`?"
+    if sous == "js" and a:
+        return action("browser_js", {"code": " ".join(a)})
+    if sous in ("click", "clic") and a:
+        return action("browser_click", {"text": " ".join(a)})
+    if sous in ("select", "menu") and a:
+        return action("browser_select", {"option": " ".join(a)})
+    if sous in ("fill", "champ") and len(a) >= 2:
+        return action("browser_fill", {"label": " ".join(a[:-1])})
+    if sous in ("open", "ouvrir") and a:
+        return action("browser_open", {"url": a[0]})
+    return "allow", "Ordinary Rasora command."
+
+
 def bash(cmd):
     if SECRETS.search(cmd) or BACKDOOR.search(cmd):
         return "deny", "Direct access to sessions or the browser port is not allowed."
-    for m in re.finditer(r"(?:^|[\s;&|/])rasora\s+(.+)", cmd):
-        try:
-            mots = shlex.split(m.group(1), posix=True)
-        except ValueError:
-            mots = m.group(1).split()
-        if not mots:
-            continue
-        sous, a = mots[0], mots[1:]
-        if sous in REGLAGES:
-            return "ask", f"Run `rasora {sous}`?"
-        if sous == "js" and a:
-            r = action("browser_js", {"code": a[-1]})
-        elif sous in ("click", "clic") and a:
-            r = action("browser_click", {"text": a[-1]})
-        elif sous in ("select", "menu") and a:
-            r = action("browser_select", {"option": a[-1]})
-        elif sous in ("fill", "champ") and len(a) >= 2:
-            r = action("browser_fill", {"label": a[-2]})
-        elif sous in ("open", "ouvrir") and a:
-            r = action("browser_open", {"url": a[0]})
-        else:
-            r = None
-        if r and r[0] != "allow":
-            return r
-        # Only a lone rasora command is auto-approved, never one chained to something else.
-        return ("allow", "Ordinary Rasora command.") if SEUL.match(cmd) else None
-    return None
+    verdicts = [appel(s, a) for s, a in appels(cmd)]
+    if not verdicts:
+        return None
+    pire = max(verdicts, key=lambda v: RANG[v[0]])    # the strictest answer wins
+    if pire[0] != "allow":
+        return pire
+    # Only a lone rasora command is auto-approved, never one chained to something else.
+    return pire if SEUL.match(cmd) else None
 
 
 def est_connexion(e):
+    """Exempt only when the sign-in is all there is: never `rasora login x; rasora click Pay`."""
     i = e.get("tool_input") or {}
+    cmd = i.get("command", "")
     return (e.get("tool_name", "").endswith("__session_login")
-            or re.search(r"(^|[\s/])rasora\s+login\s", i.get("command", "")) is not None)
+            or (SEUL.match(cmd) is not None and re.search(r"rasora\s+login\s", cmd) is not None))
 
 
 def main():

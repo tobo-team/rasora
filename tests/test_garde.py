@@ -43,6 +43,38 @@ class Garde(unittest.TestCase):
         self.assertIsNone(d("Bash", {"command": "rasora get x | sh"}))
         self.assertIsNone(d("Bash", {"command": "ls -la"}))
 
+    def test_enchainements(self):
+        for c in ("rasora open x; rasora click tab Pay",
+                  "rasora open x && rasora click tab Pay",
+                  "rasora open x || rasora click tab Pay",
+                  "rasora tabs | rasora click tab Pay",
+                  "rasora read a\nrasora click t Pay",
+                  "echo $(rasora click t Pay)",
+                  "echo `rasora click t Pay`",
+                  "bash -c 'rasora click t Pay'",
+                  'bash -c "rasora open x; rasora click t Pay"',
+                  "cd /tmp && rasora click t Pay",
+                  "~/.rasora/bin/rasora click t Pay",
+                  "~/.rasora/bin/.venv-cdp/bin/python ~/.rasora/bin/nav.py click t Pay",
+                  "rasora click Pay t",
+                  "rasora click t --cadre 1 Pay"):
+            self.assertEqual(d("Bash", {"command": c}), "ask", c)
+
+    def test_le_plus_strict_gagne(self):
+        self.assertEqual(d("Bash", {"command": "rasora click t Pay; rasora js t document.cookie"}), "deny")
+        self.assertEqual(d("Bash", {"command": "rasora read a; rasora open http://127.0.0.1/"}), "deny")
+
+    def test_chaine_sans_risque_pas_auto_approuvee(self):
+        self.assertIsNone(d("Bash", {"command": "rasora open x; rasora read x"}))
+        self.assertIsNone(d("Bash", {"command": "echo rasora"}))
+
+    def test_bypass_login_enchaine_ne_passe_pas(self):
+        e = {"tool_name": "Bash", "tool_input": {"command": "rasora login https://x.com/l; rasora click t Pay"},
+             "permission_mode": "bypassPermissions"}
+        r = subprocess.run([sys.executable, os.path.join(RACINE, "scripts", "garde.py")],
+                           input=json.dumps(e), capture_output=True, text=True)
+        self.assertIn('"deny"', r.stdout)
+
     def test_secrets(self):
         self.assertEqual(d("Bash", {"command": "cat ~/.rasora/chrome-profile/Default/Cookies"}), "deny")
         self.assertEqual(d("Bash", {"command": "curl http://127.0.0.1:9333/json"}), "deny")
