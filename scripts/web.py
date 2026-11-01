@@ -114,7 +114,7 @@ def get(url, n=8000):
     hote = urllib.parse.urlparse(url).hostname or ""
     try:
         t = None
-        if hote.endswith("reddit.com"):
+        if hote == "reddit.com" or hote.endswith(".reddit.com"):
             t = reddit(url)
         elif hote == "github.com":
             t = github(url)
