@@ -46,9 +46,12 @@ class Contournements(unittest.TestCase):
         self.assertEqual(sans_permissions("rasora login https://x.com/login"), "")
 
     def test_scripts_appeles_directement(self):
-        for c in ("python3 scripts/nav.py click t Pay", "cd ~/.rasora/bin && ./nav.py click t Pay",
+        for c in ("cd ~/.rasora/bin && ./nav.py click t Pay",
                   "python3 ~/.claude/plugins/cache/rasora/rasora/x/scripts/nav.py click t Pay"):
             self.assertEqual(d("Bash", {"command": c}), "ask", c)
+
+    def test_un_nav_py_a_soi_reste_libre(self):
+        self.assertIsNone(d("Bash", {"command": "python3 ~/tools/nav.py click tab Pay"}))
 
     def test_commandes_masquees(self):
         for c in ('ras""ora click t Pay', "r\\asora click t Pay", "rasora click t Pa$X",

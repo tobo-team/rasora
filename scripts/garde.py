@@ -34,7 +34,9 @@ SORTIE = re.compile(r"\.submit\(|fetch\(|XMLHttpRequest|sendBeacon|new Image|\.s
                     r"\.click\(|requestSubmit|dispatchEvent|\.value\s*=[^=]|\beval\(|\bFunction\(|"
                     r"\batob\(|\bimport\(|\[\s*[`'" + '"' + r"]")
 # The word rasora, or the script behind it, wherever it stands in a command.
-APPEL = re.compile(r"(?:^|[\s;&|/(`'\"=])(?:rasora|nav\.py)\s+")
+APPEL = re.compile(r"(?:^|[\s;&|/(`'\"=])rasora\s+")
+# Only with Rasora in sight: users have tools of their own called nav.py.
+APPEL_SCRIPT = re.compile(r"(?:^|[\s;&|/(`'\"=])(?:rasora|nav\.py)\s+")
 RANG = {"allow": 0, "ask": 1, "deny": 2}
 SEUL = re.compile(r"^\s*(~/\.rasora/bin/)?rasora\s+[^;&|`$<>\n]*$")
 # Past these sizes the scan could outlast the hook's timeout, and a hook that times out lets
@@ -102,7 +104,7 @@ def appels(cmd):
     A scan rather than a parse: `a; b`, `a && b`, `$(a)`, backticks and `bash -c "a"` all
     land here, because each occurrence of the word is read on its own.
     """
-    for m in APPEL.finditer(cmd):
+    for m in (APPEL_SCRIPT if "rasora" in cmd.lower() else APPEL).finditer(cmd):
         reste = cmd[m.end():]
         try:
             lex = shlex.shlex(reste, posix=True, punctuation_chars=";&|()<>`")
@@ -187,7 +189,7 @@ def main():
     except Exception:
         # A crafted value must not switch the guard off for the rest of the command.
         r = None
-        if "rasora" in nom or "rasora" in str(entree) or "nav.py" in str(entree):
+        if "rasora" in nom or "rasora" in str(entree):
             r = "ask", "The guard could not read this call. Run it?"
     if not r:
         return
