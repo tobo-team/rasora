@@ -16,7 +16,7 @@ relancer quoi que ce soit et sans qu'un mot de passe circule.
   sessions.py elaguer             teste tout, RETIRE de la table ce qui ne vit pas
   sessions.py profils             quel profil Chrome porte quel compte
 
-Appele toutes les 20 minutes par launchd `com.neverlogout.sessions`. Aucun modele
+Appele toutes les 20 minutes par launchd `com.rasora.sessions`. Aucun modele
 n'est invoque : le cout est nul.
 """
 import json
@@ -33,7 +33,7 @@ ICI = os.path.dirname(os.path.abspath(__file__))
 TABLE = os.path.join(ICI, "sessions.json")
 GREFFE = os.path.join(ICI, "cookies-vers-bot.py")
 PY = os.path.join(ICI, ".venv-cdp", "bin", "python")
-SAUVEGARDES = os.path.expanduser("~/.neverlogout/sessions")
+SAUVEGARDES = os.path.expanduser("~/.rasora/sessions")
 JOURNAL = os.path.join(SAUVEGARDES, "sessions.log")
 CHROME = os.path.expanduser("~/Library/Application Support/Google/Chrome")
 
@@ -48,7 +48,7 @@ def note(msg):
 
 def table():
     if not os.path.exists(TABLE):
-        sys.exit("no site allowed yet. Run: neverlogout allow <site>")
+        sys.exit("no site allowed yet. Run: rasora allow <site>")
     return json.load(open(TABLE, encoding="utf-8"))
 
 
@@ -348,7 +348,7 @@ def main():
         return profils()
 
     if not bot_vivant():
-        note("browser is off. Run: neverlogout start")
+        note("browser is off. Run: rasora start")
         sys.exit(1)
 
     conf_all = table()

@@ -10,7 +10,7 @@
 #   1. Ne touche JAMAIS au Chrome personnel. Aucun pkill global, aucun
 #      osascript quit. Il ne connait que les processus dont la ligne de
 #      commande contient SON user-data-dir.
-#   2. Profil a lui : ~/.neverlogout/chrome-profile. Jamais un lien vers ses profils.
+#   2. Profil a lui : ~/.rasora/chrome-profile. Jamais un lien vers ses profils.
 #   3. Port 9333, pas 9222, pour ne rien croiser.
 #   4. Pas de --enable-automation : navigator.webdriver reste false, donc
 #      Cloudflare ne voit pas d'automatisation. C'est ce qui
@@ -24,7 +24,7 @@
 
 set -uo pipefail
 PORT="${CDP_PORT:-9333}"
-DOSSIER="$HOME/.neverlogout/chrome-profile"
+DOSSIER="$HOME/.rasora/chrome-profile"
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 MARQUE="user-data-dir=$DOSSIER"
 
@@ -62,7 +62,7 @@ if ! vivant; then
     --disable-renderer-backgrounding \
     --disable-background-timer-throttling \
     --window-size=1200,900 --window-position=-2400,0 \
-    ${NEVERLOGOUT_CHROME_ARGS:-} \
+    ${RASORA_CHROME_ARGS:-} \
     "about:blank" >/dev/null 2>&1 &
   disown
 
@@ -74,11 +74,11 @@ if ! vivant; then
   # finit le travail. Clics, lecture et captures continuent de fonctionner
   # fenetre minimisee (verifie le 16/08/2026). `nav.py montrer` la ramene quand
   # un login demande ses mains. `--visible` saute cette etape.
-  if [ "${1:-}" != "--visible" ] && [ "${NEVERLOGOUT_NO_HIDE:-0}" != "1" ]; then
+  if [ "${1:-}" != "--visible" ] && [ "${RASORA_NO_HIDE:-0}" != "1" ]; then
     # `discret` masque l'application ET repousse ses fenetres. Le masquage est ce
     # qui compte : macOS ne donne pas le premier plan a une app masquee.
-    "$HOME/.neverlogout/bin/.venv-cdp/bin/python" "$HOME/.neverlogout/bin/nav.py" discret >/dev/null 2>&1
-    "$HOME/.neverlogout/bin/masquer.py" >/dev/null 2>&1
+    "$HOME/.rasora/bin/.venv-cdp/bin/python" "$HOME/.rasora/bin/nav.py" discret >/dev/null 2>&1
+    "$HOME/.rasora/bin/masquer.py" >/dev/null 2>&1
   fi
   echo "browser started on $PORT (hidden)"
 fi
@@ -90,7 +90,7 @@ fi
 # cible EN ARRIERE-PLAN : l'appel HTTP /json/new, lui, restaure et ramene la fenetre
 # devant l'ecran de l'utilisateur a chaque ouverture.
 if [ -n "${1:-}" ]; then
-  "$HOME/.neverlogout/bin/.venv-cdp/bin/python" "$HOME/.neverlogout/bin/nav.py" ouvrir "$1" 20 \
+  "$HOME/.rasora/bin/.venv-cdp/bin/python" "$HOME/.rasora/bin/nav.py" ouvrir "$1" 20 \
     || curl -s --max-time 10 -X PUT "http://127.0.0.1:$PORT/json/new?$1" >/dev/null 2>&1
 fi
 
@@ -104,7 +104,7 @@ fi
 # sans espace finale, et exclure "Helper".
 perso=0
 while read -r p rest; do
-  echo "$rest" | grep -q "neverlogout/chrome-profile" || perso=$((perso+1))
+  echo "$rest" | grep -q "rasora/chrome-profile" || perso=$((perso+1))
 done < <(ps -Ao pid,args | grep "Contents/MacOS/Google Chrome" | grep -v Helper | grep -v grep)
 
 if [ "$perso" -gt 0 ]; then

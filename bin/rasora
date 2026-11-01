@@ -1,0 +1,3 @@
+#!/bin/bash
+# On Claude's PATH while the plugin is enabled.
+exec "$(cd "$(dirname "$0")/.." && pwd)/scripts/rasora" "$@"

@@ -5,7 +5,7 @@
   memoire.py show <site|general|url>       print what is known
   memoire.py search <words...>             lines containing all these words
 
-Files live in ~/.neverlogout/memory, one Markdown file per site. No model, no index,
+Files live in ~/.rasora/memory, one Markdown file per site. No model, no index,
 no network, so reading it costs nothing. The user can open and edit every file.
 """
 import os
@@ -14,7 +14,8 @@ import sys
 import time
 import urllib.parse
 
-RACINE = os.path.expanduser("~/.neverlogout/memory")
+RACINE = os.path.expanduser("~/.rasora/memory")
+SECRET = re.compile(r"(sk-[a-z0-9-]{12}|gh[pousr]_[a-z0-9]{12}|akia[0-9a-z]{12}|password|mot de passe|bearer )", re.I)
 
 
 def cle(nom):
@@ -39,6 +40,16 @@ def save(nom, texte):
     print(f"remembered for {cle(nom)}")
 
 
+def journal(projet, texte):
+    """One line per user message. Things that look like keys are not written."""
+    if SECRET.search(texte):
+        return
+    dossier = os.path.join(RACINE, "journal")
+    os.makedirs(dossier, mode=0o700, exist_ok=True)
+    with open(os.path.join(dossier, cle(projet) + ".md"), "a", encoding="utf-8") as f:
+        f.write(f"- {time.strftime('%Y-%m-%d %H:%M')}: {' '.join(texte.split())[:300]}\n")
+
+
 def show(nom):
     if os.path.exists(chemin(nom)):
         print(f"WHAT YOU ALREADY LEARNED ON {cle(nom)} (notes, check them):")
@@ -50,9 +61,17 @@ def search(mots):
         return
     mots = [m.lower() for m in mots]
     for f in sorted(os.listdir(RACINE)):
+        if not f.endswith(".md"):
+            continue
         for ligne in open(os.path.join(RACINE, f), encoding="utf-8"):
             if all(m in ligne.lower() for m in mots):
                 print(f"{f[:-3]}: {ligne.rstrip()}")
+    journal = os.path.join(RACINE, "journal")
+    if os.path.isdir(journal):
+        for f in sorted(os.listdir(journal)):
+            for ligne in open(os.path.join(journal, f), encoding="utf-8"):
+                if all(m in ligne.lower() for m in mots):
+                    print(f"journal {f[:-3]}: {ligne.rstrip()[:200]}")
 
 
 def main():

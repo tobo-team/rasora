@@ -14,7 +14,7 @@ cookies dans le bot par CDP. Le bot n'a pas besoin d'etre redemarre.
   cookies-vers-bot.py "Profile 2" domain [domain ...]
 
 Only the domains named here are read. There is no default on purpose: nothing is
-copied unless the user allowed that site (see `neverlogout allow`).
+copied unless the user allowed that site (see `rasora allow`).
 """
 import hashlib
 import json

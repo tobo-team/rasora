@@ -1,0 +1,8 @@
+{
+  "name": "rasora",
+  "description": "Rasora for Claude Code",
+  "owner": { "name": "Camille and Micka" },
+  "plugins": [
+    { "name": "rasora", "source": "./", "description": "Hands and a memory for Claude." }
+  ]
+}

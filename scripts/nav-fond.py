@@ -15,7 +15,7 @@ cout : si une fenetre du navigateur bot mord sur l'ecran, il la repousse.
 CE QU'IL NE FAIT PAS
   - il ne touche jamais au Chrome personnel personnel (aucun CDP dessus, port 457/9222) ;
   - il se tait quand le mode discret est leve (`nav.py montrer` pour un login a la main,
-    qui efface `~/.neverlogout/chrome-profile/.discret`) : sinon il repousserait la fenetre pendant
+    qui efface `~/.rasora/chrome-profile/.discret`) : sinon il repousserait la fenetre pendant
     que l utilisateur tape son mot de passe ;
   - il ne touche pas a une fenetre minimisee, ni a une fenetre plein ecran.
 
@@ -40,14 +40,14 @@ DELAI = float(os.environ.get("NAV_FOND_DELAI", "0.2"))
 RAFRAICHIR = 3.0        # secondes entre deux recalculs de la liste des fenetres
 COIN = {"left": -5000, "top": 5000, "width": 1200, "height": 900}
 MARGE = 100          # tolerance autour du repere, en px
-JOURNAL = os.path.expanduser("~/.neverlogout/bin/nav-fond.log")
+JOURNAL = os.path.expanduser("~/.rasora/bin/nav-fond.log")
 # Battement de coeur : tant qu'il est frais, nav.py ne verifie plus les fenetres a
 # chaque clic (c'est deja fait ici, toutes les DELAI secondes).
-COEUR = os.path.expanduser("~/.neverlogout/state/nav-fond.coeur")
+COEUR = os.path.expanduser("~/.rasora/state/nav-fond.coeur")
 
 # port -> drapeau qui autorise le gardien. Absent = mode discret leve, on se tait.
 PORTS = {
-    9333: os.path.expanduser("~/.neverlogout/chrome-profile/.discret"),
+    9333: os.path.expanduser("~/.rasora/chrome-profile/.discret"),
     9334: os.path.expanduser("~/.chrome-perso/.discret"),
 }
 

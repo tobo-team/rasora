@@ -12,7 +12,7 @@ Ce script tourne toutes les 5 minutes, SANS MODELE, et ferme ce qui traine.
 
 CE QU'IL NE FERME JAMAIS
   - le port 9222, c'est le Chrome personnel personnel. Ce script ne parle qu'au 9333.
-  - un onglet dont l'URL est dans `~/.neverlogout/state/onglets-garder.txt`.
+  - un onglet dont l'URL est dans `~/.rasora/state/onglets-garder.txt`.
   - le dernier onglet : Chrome se fermerait, et avec lui les sessions connectees.
   - un onglet dont l'URL a change depuis le dernier passage : il sert, son
     compteur repart a zero.
@@ -38,13 +38,13 @@ DELAI_MIN = int(os.environ.get("NAV_GC_DELAI", "30"))
 # 14,7 Go de RAM et 27 Go de swap. Passe ce delai, la reservation ne vaut plus rien
 # et l'onglet retombe dans le regime commun.
 RESERVE_MIN = int(os.environ.get("NAV_GC_RESERVE", "45"))
-ETAT = os.path.expanduser("~/.neverlogout/state/onglets.json")
+ETAT = os.path.expanduser("~/.rasora/state/onglets.json")
 # Journal tenu par nav.py : quel onglet a servi, quand, et a quelle voie de
 # travail il a ete reserve. Sans lui, une session qui lit et clique dans une
 # application sans jamais changer d'URL (Shopify, Runway) voyait son onglet
 # ferme sous ses doigts au bout de 30 minutes.
-ACTIFS = os.path.expanduser("~/.neverlogout/state/onglets-actifs.json")
-BLANCHE = os.path.expanduser("~/.neverlogout/state/onglets-garder.txt")
+ACTIFS = os.path.expanduser("~/.rasora/state/onglets-actifs.json")
+BLANCHE = os.path.expanduser("~/.rasora/state/onglets-garder.txt")
 PLANCHER = 1  # on laisse toujours vivre au moins un onglet
 # PLAFOND PAR DOMAINE (29/08/2026). Mesure du jour : 82 onglets dont 33 sur le seul
 # monbienneuf.vercel.app, 11,8 Go de swap sur 12 disponibles, le Mac chauffait et

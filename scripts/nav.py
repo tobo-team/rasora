@@ -14,7 +14,7 @@ Revision 16/08/2026 (ce qu'on a pris a Claude in Chrome, sans payer les captures
   - `photo --sur` : cadrer une section au lieu de capturer 6000 px de page.
   - plus aucun sleep fixe dans `ouvrir` et `clic` : on sonde readyState.
 
-Port par defaut 9333 = navigateur bot (profil ~/.neverlogout/chrome-profile), jamais le Chrome
+Port par defaut 9333 = navigateur bot (profil ~/.rasora/chrome-profile), jamais le Chrome
 personnel. Surcharger avec CDP_PORT (9222 = vrai Chrome via cdp-chrome.sh).
 
 Usage :
@@ -85,7 +85,7 @@ def fenetre(o, tid):
 # Drapeau du mode discret. Il sert a REAPPLIQUER la discretion toute seule : une
 # popup de connexion (« Continuer avec Google ») ouvre une NOUVELLE fenetre, qui
 # nait au milieu de l'ecran de l'utilisateur meme quand les autres sont hors champ.
-DRAPEAU = os.path.expanduser("~/.neverlogout/chrome-profile/.discret")
+DRAPEAU = os.path.expanduser("~/.rasora/chrome-profile/.discret")
 
 
 def _fenetres(o):
@@ -173,13 +173,13 @@ def placer_fenetres(o, mode):
     return bouges
 
 
-COEUR = os.path.expanduser("~/.neverlogout/state/nav-fond.coeur")
+COEUR = os.path.expanduser("~/.rasora/state/nav-fond.coeur")
 
 
 def rester_discret(o=None):
     """A appeler apres toute action qui peut ouvrir une fenetre (clic, touche).
 
-    Si le gardien `nav-fond.py` bat (launchd `com.neverlogout.nav-fond`), il regarde les
+    Si le gardien `nav-fond.py` bat (launchd `com.rasora.nav-fond`), il regarde les
     fenetres toutes les 1,5 s et fait ce travail mieux que nous : on ne paie pas
     une connexion navigateur a chaque clic pour refaire la meme chose. Sinon on
     verifie soi-meme, en lecture seule, et on n'ecrit que si une fenetre est
@@ -209,7 +209,7 @@ def rester_discret(o=None):
 #      session qui lit et clique dans une application (Shopify, Runway) sans
 #      changer d'URL voyait son onglet disparaitre sous ses doigts.
 # On tient donc un journal : quel onglet sert, a quelle voie, et quand.
-JOURNAL = os.path.expanduser("~/.neverlogout/state/onglets-actifs.json")
+JOURNAL = os.path.expanduser("~/.rasora/state/onglets-actifs.json")
 
 
 def journal_lire():
@@ -266,7 +266,7 @@ def trouver(motif=""):
     """
     ts = onglets()
     if not ts:
-        sys.exit("no open tab, run: (~/.neverlogout/bin/navigateur-bot.sh)")
+        sys.exit("no open tab, run: (~/.rasora/bin/navigateur-bot.sh)")
     if not motif:
         return ts[0]
 
@@ -853,7 +853,7 @@ def main():
 
     if cmd == "google":
         # Quel compte Google porte le profil du bot. La session vit dans
-        # ~/.neverlogout/chrome-profile : une fois connectee, elle tient, et tout site qui
+        # ~/.rasora/chrome-profile : une fois connectee, elle tient, et tout site qui
         # propose « Continuer avec Google » se connecte sans mot de passe.
         tid = navigateur().call("Target.createTarget", {
             "url": "https://myaccount.google.com/", "background": True}).get("targetId")
@@ -871,7 +871,7 @@ def main():
         print("STATE  :", "signed in" if connecte and mails else "NOT signed in")
         if not (connecte and mails):
             print("Pour connecter : nav.py montrer, l utilisateur se connecte a la main,\n"
-                  "puis nav.py discret. La session tient ensuite dans ~/.neverlogout/chrome-profile.")
+                  "puis nav.py discret. La session tient ensuite dans ~/.rasora/chrome-profile.")
         urllib.request.urlopen(f"{BASE}/json/close/{tid}").read()
         return
 
@@ -954,7 +954,7 @@ def main():
             t = next(x for x in onglets() if x["id"] == tid)
             url_finale = t.get("url", "")
             print("SESSION REPAIRED" if not page_de_connexion(url_finale) else
-                  "STILL SIGNED OUT: run `neverlogout show` and sign in by hand a la "
+                  "STILL SIGNED OUT: run `rasora show` and sign in by hand a la "
                   "main, puis nav.py discret")
         voie = brut[brut.index("--voie") + 1] if "--voie" in brut else None
         toucher(tid, url_finale, voie=voie, vivants={x["id"] for x in onglets()})
@@ -984,7 +984,7 @@ def main():
             neuve = o.js("location.href") or ""
             print("URL AFTER REPAIR:", neuve[:130])
             if page_de_connexion(neuve):
-                print("STILL SIGNED OUT: run `neverlogout show` and sign in by hand "
+                print("STILL SIGNED OUT: run `rasora show` and sign in by hand "
                       "a la main, puis nav.py discret")
 
     elif cmd == "lire":

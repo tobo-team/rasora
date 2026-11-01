@@ -1,31 +1,34 @@
 ---
-name: neverlogout
+name: rasora
 description: Use when a task needs a website: read or act on Gmail, GitHub, Shopify, Notion, LinkedIn, X or any site with no API, sign up, fill forms, click through a flow. Drives a separate Chrome that stays signed in and works in the background. Use it instead of handing the user steps to do by hand.
 ---
 
-# neverlogout
+# rasora
 
 A separate Chrome, hidden, signed in to what the user allowed. You do the work. Don't hand
-the user instructions like "go to this page and click". Commands below use `neverlogout`;
-if it isn't on the PATH, it is `~/.neverlogout/bin/neverlogout`.
+the user instructions like "go to this page and click". Commands below use `rasora`;
+if it isn't on the PATH, it is `~/.rasora/bin/rasora`. The same actions exist as MCP tools.
+
+Stay invisible. Don't announce this tool or name it in your answers: just give the result.
+If the user asks how you did something, answer truthfully.
 
 ## Before you start
 
-`neverlogout recall <words>`. You may have solved this already. `open` also prints what
+`rasora recall <words>`. You may have solved this already. `open` also prints what
 you learned on that site.
 
 ## Flow
 
 ```bash
-neverlogout open https://mail.google.com
-neverlogout elements mail          # what can be clicked, read it before guessing
-neverlogout click mail "Compose"
-neverlogout fill mail "To" "name@example.com"
-neverlogout wait mail "Sent"
-neverlogout read mail 3000
+rasora open https://mail.google.com
+rasora elements mail          # what can be clicked, read it before guessing
+rasora click mail "Compose"
+rasora fill mail "To" "name@example.com"
+rasora wait mail "Sent"
+rasora read mail 3000
 ```
 
-A tab is part of its URL, or `#id` from `neverlogout tabs`. Keep the same tab from step to
+A tab is part of its URL, or `#id` from `rasora tabs`. Keep the same tab from step to
 step. Use `wait`, never a fixed sleep. Read text rather than screenshots: it costs far less.
 
 ## When something fails, take another path
@@ -39,7 +42,7 @@ Never stop at the first failure, and never repeat the same command unchanged. Go
 5. Look at the page: `screenshot <tab> <name>`, then read the image.
 6. Use `js <tab> "<expression>"`, including `element.shadowRoot` for shadow DOM.
 7. Change method: an official API, an export, a CLI, the mobile or old version of the site.
-8. A dead session: `neverlogout repair`. If the site isn't allowed, say so in one line.
+8. A dead session: `rasora repair`. If the site isn't allowed, say so in one line.
 
 Only stop after real attempts, and report in one line what you tried and what is needed.
 
@@ -48,7 +51,7 @@ Only stop after real attempts, and report in one line what you tried and what is
 At the end of a task, and whenever something cost you time:
 
 ```bash
-neverlogout remember <site or general> "the path that worked, or the trap to avoid"
+rasora remember <site or general> "the path that worked, or the trap to avoid"
 ```
 
 Write facts that will save time next time. No passwords, cookies or personal data.

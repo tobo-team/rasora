@@ -222,7 +222,7 @@ def demander():
     try:
         tty = open("/dev/tty")
     except OSError:
-        print("  no terminal to ask in. Later, run: neverlogout allow <site>")
+        print("  no terminal to ask in. Later, run: rasora allow <site>")
         return
     print("  Let the agent use every account you are signed in to in Chrome? It can then")
     print(f"  act on any site as you. Found: {', '.join(vus)}, and more on first visit.")

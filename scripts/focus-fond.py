@@ -33,14 +33,14 @@ from AppKit import NSRunningApplication, NSWorkspace
 from Foundation import NSObject, NSRunLoop
 
 DELAI = float(os.environ.get("FOCUS_FOND_DELAI", "0.4"))
-JOURNAL = os.path.expanduser("~/.neverlogout/bin/focus-fond.log")
+JOURNAL = os.path.expanduser("~/.rasora/bin/focus-fond.log")
 
 # On ne surveille QUE de vrais navigateurs, jamais un process quelconque : la
 # premiere version cherchait le mot « gstack » dans toute la ligne de commande et
 # ramassait les soixante process des sessions Claude. Le Chrome PERSONNEL personnel
 # (aucune de ces marques) n'est jamais surveille.
 NAVIGATEUR = re.compile(r"MacOS/(Google Chrome for Testing|Google Chrome|Chromium)\b")
-DISCRET_BOT = os.path.expanduser("~/.neverlogout/chrome-profile/.discret")
+DISCRET_BOT = os.path.expanduser("~/.rasora/chrome-profile/.discret")
 DISCRET_CLONE = os.path.expanduser("~/.chrome-perso/.discret")
 
 
@@ -64,7 +64,7 @@ def surveilles():
         if "Helper" in ligne or not NAVIGATEUR.search(ligne):
             continue
         bas = ligne.lower()
-        if ".neverlogout/chrome-profile" in bas:
+        if ".rasora/chrome-profile" in bas:
             drapeau = DISCRET_BOT
         elif ".chrome-perso" in bas:
             drapeau = DISCRET_CLONE

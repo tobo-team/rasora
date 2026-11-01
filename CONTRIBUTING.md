@@ -24,5 +24,5 @@ messages are in English, and French names are fine to rename as you go.
 
 ## Test
 
-Run the installer with your changes from a clean macOS user. `NEVERLOGOUT_NO_LAUNCHD=1`
+Run the installer with your changes from a clean macOS user. `RASORA_NO_LAUNCHD=1`
 skips the background guardians.
