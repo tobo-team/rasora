@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.0
 
 - Installs on the Python a Mac ships with (3.9). The lock asked for 3.10 and the setup failed
   in silence. Reported by Micka.

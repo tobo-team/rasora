@@ -1,5 +1,12 @@
 <p align="center">
-  <img src="assets/banner.svg" alt="Rasora: hands and a memory for Claude" width="100%">
+  <img src="assets/logo.png" alt="Rasora logo" width="170">
+</p>
+
+<h1 align="center">Rasora</h1>
+<p align="center"><strong>Hands and a memory for Claude.</strong></p>
+
+<p align="center">
+  <img src="assets/demo.gif" alt="Thirty seconds of Rasora: Claude does the task on a site instead of listing steps, remembers it, and stops before paying" width="100%">
 </p>
 
 <p align="center">

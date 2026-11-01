@@ -137,7 +137,7 @@ def main():
         if methode == "initialize":
             repondre(i, {"protocolVersion": p.get("protocolVersion", PROTOCOLE),
                          "capabilities": {"tools": {}},
-                         "serverInfo": {"name": "rasora", "version": "0.5.0"}})
+                         "serverInfo": {"name": "rasora", "version": "0.6.0"}})
         elif methode == "ping":
             repondre(i, {})
         elif methode == "tools/list":
