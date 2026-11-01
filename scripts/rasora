@@ -6,7 +6,7 @@ PY="$BIN/.venv-cdp/bin/python"
 ICI="$(cd "$(dirname "$0")" && pwd)"
 
 # First use, from the plugin: set up without asking anything.
-[ -x "$PY" ] || bash "$ICI/bootstrap.sh" >/dev/null 2>&1 || { echo "setup failed: bash $ICI/bootstrap.sh" >&2; exit 1; }
+[ -x "$PY" ] || bash "$ICI/bootstrap.sh" >/dev/null || { echo "setup failed: bash $ICI/bootstrap.sh" >&2; exit 1; }
 [ -s "$HOME/.rasora/port" ] && CDP_PORT="$(cat "$HOME/.rasora/port")"
 export CDP_PORT="${CDP_PORT:-9333}"
 PORT="$CDP_PORT"

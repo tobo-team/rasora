@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Installs on the Python a Mac ships with (3.9). The lock asked for 3.10 and the setup failed
+  in silence. Reported by Micka.
+- Setup failures now give a reason, and Claude hears about it at the next session.
+- Pillow is gone: screenshots are cropped with macOS `sips`, so there is no native dependency
+  left. The last Pillow for Python 3.9 has known vulnerabilities.
+- CI runs the install and the tests on the system Python.
+
 ## 0.5.0
 
 - Guard: every `rasora` call in a chained or nested command is checked, and the strictest

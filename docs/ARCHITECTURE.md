@@ -20,6 +20,7 @@ You talk to Claude
 | `scripts/garde.py` | Confirms risky actions, refuses forbidden ones |
 | `scripts/sensibles.py` | Sites left out by default, local address checks |
 | `scripts/web.py` | Search and read without a browser |
+| `scripts/capture_png.py` | PNG size and cropping with macOS `sips`, no image library |
 | `scripts/nav.py` | Drives Chrome by visible text |
 | `scripts/connexion.py` | Sign-in window |
 | `scripts/sessions.py` | Tests which sites are signed in |

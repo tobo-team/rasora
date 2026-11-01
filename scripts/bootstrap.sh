@@ -14,6 +14,8 @@ mkdir "$RACINE/.boot" 2>/dev/null || {                       # another setup is 
 }
 trap 'rmdir "$RACINE/.boot" 2>/dev/null' EXIT
 mkdir -p "$DEST" "$ETAT" "$RACINE/sessions" "$RACINE/memory"
+# This script often runs with nobody watching: the reason stays on disk for the next session.
+echec() { printf '%s\n' "$*" | tee "$ETAT/setup-error" >&2; exit 1; }
 
 # A port of our own. Never share one: another tool may already drive a Chrome on 9333.
 if [ ! -s "$RACINE/port" ]; then
@@ -29,9 +31,13 @@ empreinte() { find "$1" -maxdepth 1 -type f ! -name sessions.json -print0 | sort
 [ "$ICI" = "$DEST" ] || find "$ICI" -maxdepth 1 -type f -exec cp {} "$DEST"/ \;
 chmod +x "$DEST"/*.py "$DEST"/*.sh "$DEST/rasora" 2>/dev/null
 
-[ -x "$VENV/bin/python" ] || python3 -m venv "$VENV" >/dev/null 2>&1 || exit 1
+python3 -c 'import sys; sys.exit(sys.version_info < (3, 9))' 2>/dev/null ||
+  echec "Python 3.9 or newer is required. To get it, run: xcode-select --install"
+[ -x "$VENV/bin/python" ] || python3 -m venv "$VENV" >/dev/null 2>&1 ||
+  echec "Could not create the Python environment in $VENV."
 # Exact versions and hashes: a poisoned release can't slip in through an update.
-"$VENV/bin/pip" install -q --require-hashes --only-binary=:all: -r "$ICI/requirements.lock" >/dev/null 2>&1 || exit 1
+SORTIE="$("$VENV/bin/pip" install -q --require-hashes --only-binary=:all: -r "$ICI/requirements.lock" 2>&1)" ||
+  echec "Could not install the locked packages: $(printf '%s\n' "$SORTIE" | grep ERROR | tail -1)"
 
 if [ "${RASORA_NO_LAUNCHD:-0}" != "1" ]; then
   AGENTS="$HOME/Library/LaunchAgents"
@@ -66,4 +72,5 @@ if [ "${RASORA_NO_LAUNCHD:-0}" != "1" ]; then
   plist com.rasora.focus-fond /usr/bin/python3    "$DEST/focus-fond.py" boucle
 fi
 
+rm -f "$ETAT/setup-error"
 empreinte "$ICI" > "$RACINE/.version"

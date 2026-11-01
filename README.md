@@ -50,8 +50,9 @@ on the model behaving:
 - **No server of ours.** No account, no telemetry. Your sessions and memory stay on your Mac.
 - **Stop at any time.** `rasora pause` freezes it, `rasora wipe` removes everything.
 
-No agent is immune to prompt injection. Read [SECURITY.md](SECURITY.md) to see exactly what
-Rasora does and doesn't protect you from.
+No agent is immune to prompt injection: a web page can hide instructions that try to steer
+Claude. So don't sign Rasora in to your bank or your main email. Read
+[SECURITY.md](SECURITY.md) to see exactly what it does and doesn't protect you from.
 
 ## Under the hood
 

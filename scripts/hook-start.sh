@@ -12,4 +12,7 @@ if [ "$(cat "$RACINE/.version" 2>/dev/null)" != "$V" ]; then
 fi
 CWD="$(printf '%s' "$ENTREE" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("cwd",""))' 2>/dev/null)"
 python3 "$ICI/contexte.py" "${CWD:-$PWD}" 2>/dev/null
+if [ -s "$RACINE/state/setup-error" ]; then
+  echo "Rasora's setup failed, so its tools won't work yet: $(cat "$RACINE/state/setup-error")"
+fi
 exit 0

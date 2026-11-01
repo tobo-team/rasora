@@ -1221,22 +1221,17 @@ def main():
             sys.exit("capture failed: " + json.dumps(res["_erreur"])[:200])
         p = f"/tmp/{a[1]}.png"
         brut = base64.b64decode(res["data"])
+        import capture_png
         if recadre:
-            import io
-            from PIL import Image
-            im = Image.open(io.BytesIO(brut))
             # La capture est en pixels DEVICE : sur un ecran Retina elle vaut le
             # double des coordonnees CSS, et un recadrage non converti tombait a
             # cote (on cadrait le sommaire au lieu du titre vise).
             r = o.js("devicePixelRatio") or 1
-            x, y, w, h = (v * r for v in recadre)
-            im.crop((int(x), int(y), int(min(x + w, im.width)),
-                     int(min(y + h, im.height)))).save(p)
+            largeur, hauteur = capture_png.recadrer(brut, *(v * r for v in recadre), p)
         else:
             open(p, "wb").write(brut)
-        from PIL import Image as _I
-        with _I.open(p) as im:
-            print(p, f"({im.width}x{im.height})")
+            largeur, hauteur = capture_png.taille(brut)
+        print(p, f"({largeur}x{hauteur})")
 
     elif cmd == "cadres":
         fs = o.frames()

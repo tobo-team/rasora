@@ -24,3 +24,10 @@ jobs:
       - name: Locked dependencies install
         run: |
           python -m pip install --require-hashes --only-binary=:all: -r scripts/requirements.lock
+      # What a Mac has out of the box. This is the Python users run, not the one above.
+      - name: Install and tests on the system Python
+        run: |
+          /usr/bin/python3 --version
+          /usr/bin/python3 -m venv "$RUNNER_TEMP/systeme"
+          "$RUNNER_TEMP/systeme/bin/pip" install --require-hashes --only-binary=:all: -r scripts/requirements.lock
+          "$RUNNER_TEMP/systeme/bin/python" -m unittest discover -s tests
