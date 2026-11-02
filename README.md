@@ -6,7 +6,7 @@
 <p align="center"><strong>Hands and a memory for Claude.</strong></p>
 
 <p align="center">
-  <img src="assets/demo.gif" alt="Thirty seconds of Rasora: Claude does the task on a site instead of listing steps, remembers it, and stops before paying" width="100%">
+  <img src="assets/demo.gif" alt="Thirty seconds of Rasora: your AI does the work on your tools instead of listing steps, remembers it, and stops before paying" width="100%">
 </p>
 
 <p align="center">
